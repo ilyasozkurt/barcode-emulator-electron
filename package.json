@@ -5,15 +5,16 @@
   "homepage": "https://github.com/ilyasozkurt/barcode-emulator-electron",
   "main": "src/main.js",
   "scripts": {
-    "start": "electron .",
+    "build:renderer": "vite build",
+    "start": "npm run build:renderer && electron .",
     "postinstall": "electron-builder install-app-deps",
     "test": "node --test",
-    "dist": "electron-builder",
-    "dist:linux": "electron-builder --linux",
-    "dist:win": "electron-builder --win",
-    "dist:mac": "electron-builder --mac",
+    "dist": "npm run build:renderer && electron-builder",
+    "dist:linux": "npm run build:renderer && electron-builder --linux",
+    "dist:win": "npm run build:renderer && electron-builder --win",
+    "dist:mac": "npm run build:renderer && electron-builder --mac",
     "dist:all": "node scripts/dist-all.js",
-    "dist:dir": "electron-builder --dir"
+    "dist:dir": "npm run build:renderer && electron-builder --dir"
   },
   "keywords": [],
   "author": {
@@ -24,19 +25,28 @@
   "type": "commonjs",
   "dependencies": {
     "@nut-tree-fork/nut-js": "^4.2.6",
+    "@primeuix/themes": "^2.0.3",
     "@zxing/library": "^0.22.0",
     "jimp": "^1.6.1",
-    "screenshot-desktop": "^1.15.4"
+    "primeicons": "^7.0.0",
+    "primevue": "^4.5.5",
+    "screenshot-desktop": "^1.15.4",
+    "vue": "^3.5.33"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.2.4",
+    "@vitejs/plugin-vue": "^6.0.1",
     "electron": "^41.3.0",
-    "electron-builder": "^26.8.1"
+    "electron-builder": "^26.8.1",
+    "tailwindcss": "^4.2.4",
+    "vite": "^8.0.10"
   },
   "build": {
     "appId": "com.github.barcode-emulator-electron",
     "productName": "Barcode Emulator",
     "files": [
       "src/**/*",
+      "dist-renderer/**/*",
       "package.json",
       "README.md"
     ],

@@ -6,6 +6,8 @@ const {
   BrowserWindow,
   globalShortcut,
   ipcMain,
+  Notification,
+  screen,
   shell,
 } = require("electron");
 const { keyboard, Key } = require("@nut-tree-fork/nut-js");
@@ -30,6 +32,7 @@ const {
 } = require("./shared");
 
 let mainWindow = null;
+let settingsWindow = null;
 let settings = mergeSettings(DEFAULT_SETTINGS, {});
 let currentAccelerator = null;
 let startupStatus = null;
@@ -75,6 +78,25 @@ function pushStatus(payload) {
   }
 }
 
+function showStatusNotification(payload) {
+  if (!payload.notify || !Notification.isSupported()) {
+    return;
+  }
+
+  new Notification({
+    title: "Barcode Reader Emulator",
+    body: payload.message,
+  }).show();
+}
+
+function sendStatus(payload) {
+  pushStatus({
+    type: payload.type,
+    message: payload.message,
+  });
+  showStatusNotification(payload);
+}
+
 function wait(milliseconds) {
   return new Promise((resolve) => {
     setTimeout(resolve, milliseconds);
@@ -85,18 +107,12 @@ async function emulateBarcodeInput() {
   const normalizedValue = normalizeBarcodeValue(settings.barcodeValue);
 
   if (!normalizedValue) {
-    pushStatus({
+    sendStatus({
       type: "warning",
       message: "Nothing was typed because the barcode value is empty.",
+      notify: true,
     });
     return;
-  }
-
-  if (normalizedValue !== settings.barcodeValue) {
-    pushStatus({
-      type: "warning",
-      message: "Unsupported characters were replaced with ? while typing.",
-    });
   }
 
   await wait(150);
@@ -108,6 +124,14 @@ async function emulateBarcodeInput() {
   if (settings.sendEnter) {
     await keyboard.type(Key.Enter);
   }
+
+  sendStatus({
+    type: normalizedValue === settings.barcodeValue ? "success" : "warning",
+    message: normalizedValue === settings.barcodeValue
+      ? "Barcode emulated."
+      : "Barcode emulated, but unsupported characters were replaced with ?.",
+    notify: true,
+  });
 }
 
 function createDecodeHints() {
@@ -160,9 +184,10 @@ async function scanScreenBarcode() {
 
 function hotkeyCallback() {
   emulateBarcodeInput().catch((error) => {
-    pushStatus({
+    sendStatus({
       type: "error",
       message: `Typing failed: ${error.message}`,
+      notify: true,
     });
   });
 }
@@ -196,14 +221,16 @@ function registerHotkey(spec) {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 500,
-    height: 520,
-    minWidth: 460,
-    minHeight: 500,
+    width: 400,
+    height: 320,
+    minWidth: 320,
+    maxWidth: 400,
+    minHeight: 180,
     show: false,
+    title: "Barcode Reader Emulator",
     icon: APP_ICON_PATH,
     autoHideMenuBar: true,
-    backgroundColor: "#111827",
+    backgroundColor: "#f7f7f7",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -223,7 +250,72 @@ function createWindow() {
     mainWindow = null;
   });
 
-  return mainWindow.loadFile(path.join(__dirname, "index.html"));
+  return mainWindow.loadFile(path.join(__dirname, "..", "dist-renderer", "index.html"));
+}
+
+function createSettingsWindow() {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.focus();
+    return Promise.resolve();
+  }
+
+  settingsWindow = new BrowserWindow({
+    width: 400,
+    height: 380,
+    minWidth: 320,
+    maxWidth: 400,
+    minHeight: 220,
+    show: false,
+    title: "Barcode Reader Emulator Settings",
+    icon: APP_ICON_PATH,
+    autoHideMenuBar: true,
+    backgroundColor: "#f7f7f7",
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  settingsWindow.once("ready-to-show", () => {
+    settingsWindow.show();
+    settingsWindow.focus();
+  });
+
+  settingsWindow.on("closed", () => {
+    settingsWindow = null;
+  });
+
+  return settingsWindow.loadFile(
+    path.join(__dirname, "..", "dist-renderer", "index.html"),
+    {
+      query: {
+        view: "settings",
+      },
+    },
+  );
+}
+
+function clampWindowHeight(window, height) {
+  const display = screen.getDisplayMatching(window.getBounds());
+  const maxHeight = Math.max(display.workAreaSize.height - 80, 200);
+  const minimumHeight = window === settingsWindow ? 220 : 180;
+  return Math.max(minimumHeight, Math.min(Math.ceil(height), maxHeight));
+}
+
+function resizeWindowToContent(window, contentHeight) {
+  if (!window || window.isDestroyed()) {
+    return;
+  }
+
+  const [contentWidth, currentHeight] = window.getContentSize();
+  const nextHeight = clampWindowHeight(window, contentHeight);
+
+  if (Math.abs(currentHeight - nextHeight) < 2) {
+    return;
+  }
+
+  window.setContentSize(contentWidth, nextHeight);
 }
 
 ipcMain.handle("settings:get", async () => {
@@ -240,16 +332,75 @@ ipcMain.handle("settings:update", async (_event, partialSettings) => {
   return getRendererState();
 });
 
+ipcMain.handle("settings:open-window", async () => {
+  await createSettingsWindow();
+  return true;
+});
+
+ipcMain.on("window:content-height", (event, contentHeight) => {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  resizeWindowToContent(window, Number(contentHeight) || 0);
+});
+
+ipcMain.on("barcode-value:sync", (_event, barcodeValue) => {
+  settings = mergeSettings(settings, { barcodeValue: String(barcodeValue ?? "") });
+});
+
 ipcMain.handle("hotkey:update", async (_event, nextHotkey) => {
-  const normalizedHotkey = normalizeHotkeySpec(nextHotkey);
-  registerHotkey(normalizedHotkey);
-  settings = mergeSettings(settings, { hotkey: normalizedHotkey });
-  await saveSettings();
-  return getRendererState();
+  try {
+    const normalizedHotkey = normalizeHotkeySpec(nextHotkey);
+    registerHotkey(normalizedHotkey);
+    settings = mergeSettings(settings, { hotkey: normalizedHotkey });
+    await saveSettings();
+
+    const rendererState = getRendererState();
+    sendStatus({
+      type: "success",
+      message: `Hotkey updated to ${rendererState.hotkeyLabel}.`,
+      notify: true,
+    });
+    return rendererState;
+  } catch (error) {
+    sendStatus({
+      type: "error",
+      message: error.message,
+      notify: true,
+    });
+    throw error;
+  }
+});
+
+ipcMain.handle("barcode:emulate", async () => {
+  try {
+    await emulateBarcodeInput();
+    return true;
+  } catch (error) {
+    sendStatus({
+      type: "error",
+      message: `Typing failed: ${error.message}`,
+      notify: true,
+    });
+    throw error;
+  }
 });
 
 ipcMain.handle("screen:scan", async () => {
-  return scanScreenBarcode();
+  try {
+    const barcodeValue = await scanScreenBarcode();
+    sendStatus({
+      type: "success",
+      message: "Barcode value updated from the screen.",
+      notify: true,
+    });
+    return barcodeValue;
+  } catch (error) {
+    sendStatus({
+      type: "error",
+      message: error.message,
+      notify: true,
+    });
+    throw error;
+  }
 });
 
 app.whenReady().then(async () => {
@@ -267,7 +418,7 @@ app.whenReady().then(async () => {
   await createWindow();
 
   app.on("activate", async () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (!mainWindow) {
       await createWindow();
     }
   });
