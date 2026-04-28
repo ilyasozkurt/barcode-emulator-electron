@@ -50,6 +50,8 @@ Use the included GitHub Actions workflow. It runs a native build matrix on:
 
 That avoids the usual cross-packaging limitations from a single local machine.
 
+The build workflow runs automatically for pushes to version branches matching `v*`.
+
 ### Publish a versioned release
 
 Push a tag like `v1.0.0` and the release workflow will:

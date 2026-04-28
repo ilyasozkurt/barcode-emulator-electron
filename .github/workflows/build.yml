@@ -3,7 +3,7 @@ name: Build desktop apps
 on:
   push:
     branches:
-      - master
+      - "v*"
   pull_request:
   workflow_dispatch:
 
