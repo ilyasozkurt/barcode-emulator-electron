@@ -8,7 +8,7 @@
           <button
             id="editHotkeyButton"
             type="button"
-            class="inline-flex h-7 min-w-7 items-center justify-center rounded-full border border-slate-300 px-2 text-[0.78rem] font-medium text-slate-600 transition hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+            class="inline-flex cursor-pointer h-7 min-w-7 items-center justify-center rounded-full border border-slate-300 px-2 text-[0.78rem] font-medium text-slate-600 transition hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
             :disabled="!bridgeAvailable || !controlsEnabled || hotkeySaveBusy"
             @click="toggleHotkeyRecording"
           >
@@ -19,18 +19,6 @@
       </div>
 
       <section aria-label="Barcode reader emulator controls" class="relative">
-        <Button
-          id="scanButton"
-          icon="pi pi-search"
-          severity="secondary"
-          text
-          rounded
-          aria-label="Scan from screen"
-          class="!absolute top-2.5 right-3 z-10 !h-9 !w-9"
-          :loading="scanBusy"
-          :disabled="!bridgeAvailable || !controlsEnabled || scanBusy || hotkeyRecording"
-          @click="scanFromScreen"
-        />
         <Textarea
           id="barcodeValue"
           v-model="barcodeValue"
@@ -39,25 +27,39 @@
           :maxlength="128"
           placeholder="Type a barcode value..."
           :disabled="!controlsEnabled"
-          class="min-h-[132px] w-full rounded-[1.9rem] border border-[#d6d6d6] bg-white px-4 py-5 pr-14 text-[0.95rem] shadow-none"
+          class="min-h-[132px] w-full rounded-[1.9rem] border border-[#d6d6d6] bg-white px-4 py-5 text-[0.95rem] shadow-none"
           @update:modelValue="onBarcodeInput"
         />
       </section>
 
-      <label
-        class="flex cursor-pointer items-center gap-2 text-[0.88rem] text-slate-700"
-        :class="{ 'opacity-50': !bridgeAvailable || !controlsEnabled }"
-      >
-        <input
-          id="sendEnterInput"
-          :checked="sendEnter"
-          type="checkbox"
-          class="h-4 w-4 accent-slate-900"
-          :disabled="!bridgeAvailable || !controlsEnabled"
-          @change="handleSendEnterUpdate($event.target.checked)"
-        />
-        <span>Send ENTER at the end</span>
-      </label>
+      <section class="flex items-center justify-between gap-3">
+        <label
+          class="flex cursor-pointer items-center gap-2 text-[0.88rem] text-slate-700"
+          :class="{ 'opacity-50': !bridgeAvailable || !controlsEnabled }"
+        >
+          <input
+            id="sendEnterInput"
+            :checked="sendEnter"
+            type="checkbox"
+            class="h-4 w-4 accent-slate-900"
+            :disabled="!bridgeAvailable || !controlsEnabled"
+            @change="handleSendEnterUpdate($event.target.checked)"
+          />
+          <span>Send ENTER at the end</span>
+        </label>
+
+        <button
+          id="speedButton"
+          type="button"
+          class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[0.76rem] font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="!bridgeAvailable || !controlsEnabled || hotkeyRecording"
+          @click="openSpeedDrawer"
+        >
+          <i class="pi pi-pencil text-[0.72rem]" aria-hidden="true" />
+          <span>Speed</span>
+          <span>{{ delayMs }} ms</span>
+        </button>
+      </section>
 
       <Button
         id="sendButton"
@@ -74,33 +76,69 @@
       </Button>
     </section>
 
-    <div
-      v-if="hotkeyRecording"
-      class="pointer-events-none fixed inset-0 z-30 flex items-end bg-black/15"
+    <Drawer
+      v-model:visible="hotkeyRecording"
+      position="bottom"
+      class="!h-auto !max-h-[50vh] rounded-t-[24px]"
+      pt:header:class="!px-5 !py-4"
       aria-live="polite"
     >
-      <section class="pointer-events-auto w-full rounded-t-[22px] border-t border-slate-200 bg-white px-4 py-4 shadow-[0_-12px_30px_rgba(15,23,42,0.12)]">
-        <div class="flex items-start justify-between gap-3">
-          <div class="grid gap-1">
-            <p class="m-0 text-[0.96rem] font-semibold text-slate-900">Recording shortcut</p>
-            <p class="m-0 text-[0.82rem] text-slate-500">{{ hotkeyRecordingMessage }}</p>
+      <template #header>
+        <div class="flex items-center gap-2 text-base font-semibold text-slate-900">
+          <span class="relative flex h-3 w-3">
+            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+            <span class="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
+          </span>
+          <span>Recording shortcut</span>
+        </div>
+      </template>
+
+      <section class="grid gap-1 pb-2">
+        <p class="m-0 text-[0.82rem] text-slate-500">{{ hotkeyRecordingMessage }}</p>
+      </section>
+    </Drawer>
+
+    <Drawer
+      v-model:visible="speedDrawerVisible"
+      position="bottom"
+      header="Speed"
+      class="!h-auto !max-h-[50vh] rounded-t-[24px]"
+      pt:header:class="!px-5 !py-4"
+      pt:title:class="!text-base !font-semibold"
+    >
+      <section class="grid gap-4 pb-2">
+        <div class="flex items-center justify-between gap-3 text-[0.92rem] text-slate-700">
+          <span>Barcode emulating speed</span>
+          <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[0.78rem] font-medium text-slate-700">
+            {{ describeDelay(delayMs) }}
+          </span>
+        </div>
+        <div class="grid gap-2">
+          <input
+            id="speedInput"
+            :value="delayMs"
+            type="range"
+            min="10"
+            max="100"
+            step="5"
+            class="h-2 w-full cursor-pointer accent-slate-900"
+            :disabled="!bridgeAvailable || !controlsEnabled || hotkeyRecording"
+            @input="handleDelayInput(Number($event.target.value))"
+          />
+          <div class="flex justify-between text-[0.75rem] text-slate-500">
+            <span>Fast</span>
+            <span>Slow</span>
           </div>
-          <button
-            type="button"
-            class="inline-flex h-8 min-w-8 items-center justify-center rounded-full border border-slate-300 px-3 text-[0.8rem] font-medium text-slate-600 transition hover:border-slate-400 hover:text-slate-900"
-            @click="toggleHotkeyRecording"
-          >
-            Cancel
-          </button>
         </div>
       </section>
-    </div>
+    </Drawer>
   </main>
 </template>
 
 <script setup>
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import Button from "primevue/button";
+import Drawer from "primevue/drawer";
 import Textarea from "primevue/textarea";
 
 const api = window.barcodeEmulator;
@@ -112,7 +150,6 @@ const bridgeAvailable = Boolean(
     && typeof api.getSettings === "function"
     && typeof api.updateSettings === "function"
     && typeof api.setHotkey === "function"
-    && typeof api.scanScreenBarcode === "function"
     && typeof api.emulateBarcode === "function"
     && typeof api.reportContentHeight === "function"
     && typeof api.syncBarcodeValue === "function"
@@ -167,14 +204,15 @@ const draftHotkey = ref(
   }),
 );
 const currentSettings = ref(null);
-const scanBusy = ref(false);
 const sendBusy = ref(false);
 const hotkeyRecording = ref(false);
 const hotkeySaveBusy = ref(false);
 const hotkeyRecordingMessage = ref("Press the new shortcut now. Use at least one modifier and one letter or number. Press Esc to cancel.");
 const pageRoot = ref(null);
+const speedDrawerVisible = ref(false);
 
 let valueSaveTimer = null;
+let delaySaveTimer = null;
 let unsubscribeStatus = null;
 let resizeFrame = null;
 
@@ -215,6 +253,20 @@ function queueBarcodeValueSave(value) {
   }, 150);
 }
 
+function describeDelay(value) {
+  const roundedValue = Number(value);
+
+  if (roundedValue <= 25) {
+    return `Fast (${roundedValue} ms)`;
+  }
+
+  if (roundedValue <= 60) {
+    return `Normal (${roundedValue} ms)`;
+  }
+
+  return `Slow (${roundedValue} ms)`;
+}
+
 function onBarcodeInput(value) {
   if (!bridgeAvailable) {
     return;
@@ -225,20 +277,34 @@ function onBarcodeInput(value) {
   queueBarcodeValueSave(value);
 }
 
-async function scanFromScreen() {
-  scanBusy.value = true;
+function queueDelaySave(value) {
+  clearTimeout(delaySaveTimer);
+  delaySaveTimer = setTimeout(async () => {
+    try {
+      await persistSettings({ delayMs: value });
+    } catch (error) {
+      setStatus(error.message, "error");
+    }
+  }, 150);
+}
 
-  try {
-    const scannedValue = await api.scanScreenBarcode();
-    barcodeValue.value = scannedValue;
-    api.syncBarcodeValue(scannedValue);
-    await persistSettings({ barcodeValue: scannedValue });
-    setStatus("Barcode value updated from the screen.", "success");
-  } catch (error) {
-    setStatus(error.message, "error");
-  } finally {
-    scanBusy.value = false;
+function handleDelayInput(value) {
+  if (!bridgeAvailable) {
+    return;
   }
+
+  delayMs.value = value;
+
+  if (currentSettings.value && value === currentSettings.value.delayMs) {
+    clearTimeout(delaySaveTimer);
+    return;
+  }
+
+  queueDelaySave(value);
+}
+
+function openSpeedDrawer() {
+  speedDrawerVisible.value = true;
 }
 
 async function sendBarcode() {
@@ -366,10 +432,10 @@ function reportContentHeight() {
     return;
   }
 
+  const contentElement = pageElement.firstElementChild ?? pageElement;
   const measuredHeight = Math.max(
-    pageElement.scrollHeight,
-    document.body.scrollHeight,
-    document.documentElement.scrollHeight,
+    contentElement.scrollHeight,
+    Math.ceil(contentElement.getBoundingClientRect().height),
   );
 
   api.reportContentHeight(measuredHeight);
@@ -395,6 +461,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   unsubscribeStatus?.();
   clearTimeout(valueSaveTimer);
+  clearTimeout(delaySaveTimer);
   window.removeEventListener("keydown", handleHotkeyRecordingKeydown, true);
   if (resizeFrame !== null) {
     cancelAnimationFrame(resizeFrame);
@@ -402,7 +469,7 @@ onBeforeUnmount(() => {
 });
 
 watch(
-  [barcodeValue, hotkeyLabel, sendEnter, hotkeyRecording, hotkeyRecordingMessage],
+  [barcodeValue, hotkeyLabel, delayMs, sendEnter, hotkeyRecording, hotkeyRecordingMessage],
   async () => {
     await nextTick();
     scheduleContentHeightReport();

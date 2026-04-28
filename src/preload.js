@@ -62,7 +62,6 @@ contextBridge.exposeInMainWorld("barcodeEmulator", {
       ipcRenderer.removeListener("status", listener);
     };
   },
-  scanScreenBarcode: () => ipcRenderer.invoke("screen:scan"),
   setHotkey: (hotkey) => ipcRenderer.invoke("hotkey:update", hotkey),
   syncBarcodeValue: (barcodeValue) => ipcRenderer.send("barcode-value:sync", barcodeValue),
   updateSettings: (partialSettings) => ipcRenderer.invoke("settings:update", partialSettings),

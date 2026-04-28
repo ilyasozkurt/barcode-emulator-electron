@@ -1,6 +1,6 @@
 {
   "name": "barcode-emulator-electron",
-  "version": "1.0.7",
+  "version": "1.0.9",
   "description": "Cross-platform Electron barcode reader emulator",
   "homepage": "https://github.com/ilyasozkurt/barcode-emulator-electron",
   "main": "src/main.js",
@@ -26,11 +26,8 @@
   "dependencies": {
     "@nut-tree-fork/nut-js": "^4.2.6",
     "@primeuix/themes": "^2.0.3",
-    "@zxing/library": "^0.22.0",
-    "jimp": "^1.6.1",
     "primeicons": "^7.0.0",
     "primevue": "^4.5.5",
-    "screenshot-desktop": "^1.15.4",
     "vue": "^3.5.33"
   },
   "devDependencies": {

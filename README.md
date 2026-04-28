@@ -10,7 +10,6 @@ Cross-platform Electron desktop app that emulates a barcode reader by typing a c
 - Configurable global hotkey
 - Adjustable delay between key presses
 - Optional trailing `Enter`
-- Scan barcode content from the screen
 - Persistent settings between launches
 
 ## Getting started
@@ -79,12 +78,6 @@ Push a tag like `v1.0.0` and the release workflow will:
 - `release/` contains the generated artifacts.
 
 ## Notes
-
-- On Ubuntu, `screenshot-desktop` needs an installed capture backend such as ImageMagick:
-
-  ```bash
-  sudo apt-get install imagemagick
-  ```
 
 - Keyboard emulation and global shortcuts may require accessibility/input permissions depending on the operating system.
 - The app is tuned for a US keyboard layout, matching the original barcode reader emulator behavior.

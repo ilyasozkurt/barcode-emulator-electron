@@ -58,6 +58,10 @@ test("default hotkey remains Ctrl+Alt+A", () => {
   assert.equal(formatHotkeyLabel(hotkey, "linux"), "Ctrl + Alt + A");
 });
 
+test("default speed remains 10 ms", () => {
+  assert.equal(DEFAULT_SETTINGS.delayMs, 10);
+});
+
 test("hotkey requires at least one modifier", () => {
   assert.throws(() => normalizeHotkeySpec({ key: "A", modifiers: {} }), /at least one modifier/i);
 });

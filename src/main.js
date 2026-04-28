@@ -11,16 +11,6 @@ const {
   shell,
 } = require("electron");
 const { keyboard, Key } = require("@nut-tree-fork/nut-js");
-const {
-  BarcodeFormat,
-  BinaryBitmap,
-  DecodeHintType,
-  HybridBinarizer,
-  MultiFormatReader,
-  RGBLuminanceSource,
-} = require("@zxing/library");
-const { Jimp } = require("jimp");
-const screenshot = require("screenshot-desktop");
 
 const {
   DEFAULT_SETTINGS,
@@ -38,6 +28,8 @@ let currentAccelerator = null;
 let startupStatus = null;
 
 const SETTINGS_FILE_NAME = "settings.json";
+const MAIN_WINDOW_MIN_HEIGHT = 150;
+const SETTINGS_WINDOW_MIN_HEIGHT = 220;
 const APP_ICON_PATH = path.join(
   __dirname,
   process.platform === "win32" ? "icon.ico" : "icon.png",
@@ -137,54 +129,6 @@ async function emulateBarcodeInput() {
   });
 }
 
-function createDecodeHints() {
-  const hints = new Map();
-  hints.set(DecodeHintType.TRY_HARDER, true);
-  hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-    BarcodeFormat.CODABAR,
-    BarcodeFormat.CODE_39,
-    BarcodeFormat.CODE_93,
-    BarcodeFormat.CODE_128,
-    BarcodeFormat.EAN_8,
-    BarcodeFormat.EAN_13,
-    BarcodeFormat.ITF,
-    BarcodeFormat.QR_CODE,
-    BarcodeFormat.UPC_A,
-    BarcodeFormat.UPC_E,
-  ]);
-  return hints;
-}
-
-async function decodeBuffer(imageBuffer) {
-  const image = await Jimp.read(imageBuffer);
-  const { data, width, height } = image.bitmap;
-  const luminanceSource = new RGBLuminanceSource(Uint8ClampedArray.from(data), width, height);
-  const binaryBitmap = new BinaryBitmap(new HybridBinarizer(luminanceSource));
-  const reader = new MultiFormatReader();
-
-  return reader.decode(binaryBitmap, createDecodeHints()).getText();
-}
-
-async function scanScreenBarcode() {
-  const displays = await screenshot.listDisplays();
-  let lastError = null;
-
-  for (const display of displays) {
-    try {
-      const imageBuffer = await screenshot({ format: "png", screen: display.id });
-      return await decodeBuffer(imageBuffer);
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  if (lastError) {
-    throw new Error(`Could not decode a barcode from the current screen content. ${lastError.message}`);
-  }
-
-  throw new Error("Could not find a barcode on any display.");
-}
-
 function hotkeyCallback() {
   emulateBarcodeInput().catch((error) => {
     sendStatus({
@@ -229,6 +173,7 @@ function createWindow() {
     minWidth: 320,
     maxWidth: 400,
     minHeight: 180,
+    resizable: false,
     show: false,
     title: "Barcode Reader Emulator",
     icon: APP_ICON_PATH,
@@ -254,49 +199,6 @@ function createWindow() {
   });
 
   return mainWindow.loadFile(path.join(__dirname, "..", "dist-renderer", "index.html"));
-}
-
-function createSettingsWindow() {
-  if (settingsWindow && !settingsWindow.isDestroyed()) {
-    settingsWindow.focus();
-    return Promise.resolve();
-  }
-
-  settingsWindow = new BrowserWindow({
-    width: 400,
-    height: 380,
-    minWidth: 320,
-    maxWidth: 400,
-    minHeight: 220,
-    show: false,
-    title: "Barcode Reader Emulator Settings",
-    icon: APP_ICON_PATH,
-    autoHideMenuBar: true,
-    backgroundColor: "#f7f7f7",
-    webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
-  });
-
-  settingsWindow.once("ready-to-show", () => {
-    settingsWindow.show();
-    settingsWindow.focus();
-  });
-
-  settingsWindow.on("closed", () => {
-    settingsWindow = null;
-  });
-
-  return settingsWindow.loadFile(
-    path.join(__dirname, "..", "dist-renderer", "index.html"),
-    {
-      query: {
-        view: "settings",
-      },
-    },
-  );
 }
 
 function clampWindowHeight(window, height) {
@@ -333,11 +235,6 @@ ipcMain.handle("settings:update", async (_event, partialSettings) => {
   settings = mergeSettings(settings, partialSettings);
   await saveSettings();
   return getRendererState();
-});
-
-ipcMain.handle("settings:open-window", async () => {
-  await createSettingsWindow();
-  return true;
 });
 
 ipcMain.on("window:content-height", (event, contentHeight) => {
@@ -381,25 +278,6 @@ ipcMain.handle("barcode:emulate", async () => {
     sendStatus({
       type: "error",
       message: `Typing failed: ${error.message}`,
-      notify: true,
-    });
-    throw error;
-  }
-});
-
-ipcMain.handle("screen:scan", async () => {
-  try {
-    const barcodeValue = await scanScreenBarcode();
-    sendStatus({
-      type: "success",
-      message: "Barcode value updated from the screen.",
-      notify: true,
-    });
-    return barcodeValue;
-  } catch (error) {
-    sendStatus({
-      type: "error",
-      message: error.message,
       notify: true,
     });
     throw error;

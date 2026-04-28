@@ -41,7 +41,7 @@ const SUPPORTED_BARCODE_CHAR = /^[0-9A-Za-z`~!@#$%^&*()_+\-=\[\]{}\\|;:'",.<>/?]
 
 const DEFAULT_SETTINGS = Object.freeze({
   barcodeValue: "test",
-  delayMs: 30,
+  delayMs: 10,
   sendEnter: false,
   hotkey: {
     key: "A",
