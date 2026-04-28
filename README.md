@@ -2,7 +2,7 @@
 
 Cross-platform Electron desktop app that emulates a barcode reader by typing a configured value into the currently focused application when a global hotkey is pressed.
 
-<img width="420" height="424" alt="Screenshot from 2026-04-28 22-18-26" src="https://github.com/user-attachments/assets/4a557209-f3e7-48ec-9bc3-77e8f32745b5" />
+<img width="1206" height="419" alt="merged-image" src="https://github.com/user-attachments/assets/cec9569e-ce33-4498-b439-7be3f9be518d" />
 
 ## Features
 
