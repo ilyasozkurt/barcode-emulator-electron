@@ -14,6 +14,12 @@ jobs:
     name: Build ${{ matrix.os-name }} release artifactsadasdasdafasfasfasfasfasfasf
 
     runs-on: ${{ matrix.runner }}
+    env:
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+      MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
 
     strategy:
       fail-fast: false
@@ -52,11 +58,11 @@ jobs:
           cache: npm
 
       - name: Import macOS signing certificate
-        if: runner.os == 'macOS' && secrets.MACOS_CERTIFICATE_P12 != '' && secrets.MACOS_CERTIFICATE_PASSWORD != ''
+        if: runner.os == 'macOS' && env.MACOS_CERTIFICATE_P12 != '' && env.MACOS_CERTIFICATE_PASSWORD != ''
         uses: apple-actions/import-codesign-certs@v3
         with:
-          p12-file-base64: ${{ secrets.MACOS_CERTIFICATE_P12 }}
-          p12-password: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          p12-file-base64: ${{ env.MACOS_CERTIFICATE_P12 }}
+          p12-password: ${{ env.MACOS_CERTIFICATE_PASSWORD }}
 
       - name: Install Linux screenshot dependency
         if: runner.os == 'Linux'
@@ -70,10 +76,6 @@ jobs:
 
       - name: Build release artifacts
         run: npm run ${{ matrix.build-script }}
-        env:
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ runner.os == 'macOS' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
-          APPLE_ID: ${{ runner.os == 'macOS' && secrets.APPLE_ID || '' }}
-          APPLE_TEAM_ID: ${{ runner.os == 'macOS' && secrets.APPLE_TEAM_ID || '' }}
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
