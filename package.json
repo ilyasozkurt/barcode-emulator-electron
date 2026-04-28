@@ -1,0 +1,64 @@
+{
+  "name": "barcode-emulator-electron",
+  "version": "1.0.0",
+  "description": "Cross-platform Electron barcode reader emulator",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "postinstall": "electron-builder install-app-deps",
+    "test": "node --test",
+    "dist": "electron-builder",
+    "dist:linux": "electron-builder --linux",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:all": "node scripts/dist-all.js",
+    "dist:dir": "electron-builder --dir"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@nut-tree-fork/nut-js": "^4.2.6",
+    "@zxing/library": "^0.22.0",
+    "jimp": "^1.6.1",
+    "screenshot-desktop": "^1.15.4"
+  },
+  "devDependencies": {
+    "electron": "^41.3.0",
+    "electron-builder": "^26.8.1"
+  },
+  "build": {
+    "appId": "com.github.barcode-emulator-electron",
+    "productName": "Barcode Emulator",
+    "files": [
+      "src/**/*",
+      "package.json",
+      "README.md"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "linux": {
+      "icon": "src/icon.png",
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility"
+    },
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ]
+    },
+    "mac": {
+      "target": [
+        "zip"
+      ],
+      "category": "public.app-category.utilities"
+    }
+  }
+}

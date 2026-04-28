@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Barcode Emulator</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Desktop barcode keyboard emulator</p>
+          <h1>Barcode Emulator</h1>
+          <p class="subtitle">Type a barcode into any focused app with a global hotkey.</p>
+        </div>
+      </header>
+
+      <section class="panel">
+        <label class="field">
+          <span class="field-label">Value</span>
+          <textarea
+            id="barcodeValue"
+            class="value-input"
+            rows="4"
+            maxlength="128"
+            placeholder="Enter the value to emulate"
+          ></textarea>
+        </label>
+
+        <div class="row">
+          <button id="scanButton" class="button button-secondary" type="button">Scan from screen</button>
+          <span id="valueHint" class="hint"></span>
+        </div>
+      </section>
+
+      <section class="panel panel-tight">
+        <div class="setting-line">
+          <div>
+            <span class="field-label">Hotkey</span>
+            <p id="hotkeyLabel" class="setting-value"></p>
+          </div>
+          <button id="changeHotkeyButton" class="button button-primary" type="button">Change</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <label class="field">
+          <span class="field-label">Input key delay</span>
+          <div class="slider-row">
+            <input id="delayInput" type="range" min="10" max="100" step="1" />
+            <output id="delayValue" for="delayInput" class="delay-output"></output>
+          </div>
+        </label>
+
+        <label class="checkbox">
+          <input id="sendEnterInput" type="checkbox" />
+          <span>Send Enter at the end</span>
+        </label>
+      </section>
+
+      <section class="panel panel-tight">
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+        <p class="footnote">
+          Supported reliably on a US keyboard layout. Some platforms require accessibility or screen-recording permissions.
+        </p>
+      </section>
+    </main>
+
+    <dialog id="hotkeyDialog" class="dialog">
+      <form method="dialog" class="dialog-content">
+        <h2>Change hotkey</h2>
+        <p class="dialog-copy">Pick optional modifiers and one letter or digit, like the original emulator.</p>
+
+        <div class="modifier-grid">
+          <label class="checkbox"><input id="modifierControl" type="checkbox" /> <span>Ctrl / Control</span></label>
+          <label class="checkbox"><input id="modifierAlt" type="checkbox" /> <span>Alt / Option</span></label>
+          <label class="checkbox"><input id="modifierShift" type="checkbox" /> <span>Shift</span></label>
+          <label class="checkbox"><input id="modifierSuper" type="checkbox" /> <span>Win / Command</span></label>
+        </div>
+
+        <label class="field">
+          <span class="field-label">Main key</span>
+          <select id="hotkeyKeySelect" class="select-input"></select>
+        </label>
+
+        <p id="dialogPreview" class="dialog-preview"></p>
+
+        <div class="dialog-actions">
+          <button id="cancelHotkeyButton" class="button button-secondary" value="cancel" type="submit">Cancel</button>
+          <button id="saveHotkeyButton" class="button button-primary" value="default" type="button">Save hotkey</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./renderer.js"></script>
+  </body>
+</html>
+

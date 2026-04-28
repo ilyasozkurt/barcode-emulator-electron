@@ -1,0 +1,92 @@
+name: Publish desktop release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.os-name }} release artifacts
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os-name: Ubuntu
+            runner: ubuntu-latest
+            build-script: dist:linux
+            artifact-name: barcode-emulator-ubuntu
+            artifact-pattern: |
+              release/*.AppImage
+              release/*.deb
+          - os-name: Windows
+            runner: windows-latest
+            build-script: dist:win
+            artifact-name: barcode-emulator-windows
+            artifact-pattern: |
+              release/*.exe
+              release/*.blockmap
+          - os-name: macOS
+            runner: macos-latest
+            build-script: dist:mac
+            artifact-name: barcode-emulator-macos
+            artifact-pattern: |
+              release/*.zip
+              release/*.blockmap
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Linux screenshot dependency
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build release artifacts
+        run: npm run ${{ matrix.build-script }}
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.artifact-pattern }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/**/*.AppImage
+            artifacts/**/*.deb
+            artifacts/**/*.exe
+            artifacts/**/*.zip

@@ -1,0 +1,66 @@
+name: Build desktop apps
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os-name }}
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os-name: Ubuntu
+            runner: ubuntu-latest
+            build-script: dist:linux
+            artifact-pattern: |
+              release/*.AppImage
+              release/*.deb
+          - os-name: Windows
+            runner: windows-latest
+            build-script: dist:win
+            artifact-pattern: |
+              release/*.exe
+              release/*.blockmap
+          - os-name: macOS
+            runner: macos-latest
+            build-script: dist:mac
+            artifact-pattern: |
+              release/*.zip
+              release/*.blockmap
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Linux screenshot dependency
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build app
+        run: npm run ${{ matrix.build-script }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: barcode-emulator-${{ matrix.os-name }}
+          path: ${{ matrix.artifact-pattern }}
+          if-no-files-found: error
