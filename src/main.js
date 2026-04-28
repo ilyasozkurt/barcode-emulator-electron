@@ -418,6 +418,10 @@ app.whenReady().then(async () => {
     };
   }
 
+  if (process.platform === "darwin" && app.dock) {
+    app.dock.setIcon(APP_ICON_PATH);
+  }
+
   await createWindow();
 
   app.on("activate", async () => {

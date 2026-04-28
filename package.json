@@ -1,6 +1,6 @@
 {
   "name": "barcode-emulator-electron",
-  "version": "1.0.4",
+  "version": "1.0.6",
   "description": "Cross-platform Electron barcode reader emulator",
   "homepage": "https://github.com/ilyasozkurt/barcode-emulator-electron",
   "main": "src/main.js",
@@ -71,6 +71,7 @@
       ]
     },
     "mac": {
+      "icon": "src/icon.icns",
       "target": [
         {
           "target": "zip",
