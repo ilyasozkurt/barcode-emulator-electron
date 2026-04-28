@@ -52,7 +52,6 @@ contextBridge.exposeInMainWorld("barcodeEmulator", {
   getSettings: () => ipcRenderer.invoke("settings:get"),
   emulateBarcode: () => ipcRenderer.invoke("barcode:emulate"),
   normalizeBarcodeValue,
-  openSettingsWindow: () => ipcRenderer.invoke("settings:open-window"),
   reportContentHeight: (height) => ipcRenderer.send("window:content-height", height),
   onStatus: (callback) => {
     const listener = (_event, payload) => callback(payload);

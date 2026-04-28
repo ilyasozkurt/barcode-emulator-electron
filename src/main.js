@@ -22,14 +22,12 @@ const {
 } = require("./shared");
 
 let mainWindow = null;
-let settingsWindow = null;
 let settings = mergeSettings(DEFAULT_SETTINGS, {});
 let currentAccelerator = null;
 let startupStatus = null;
 
 const SETTINGS_FILE_NAME = "settings.json";
 const MAIN_WINDOW_MIN_HEIGHT = 150;
-const SETTINGS_WINDOW_MIN_HEIGHT = 220;
 const APP_ICON_PATH = path.join(
   __dirname,
   process.platform === "win32" ? "icon.ico" : "icon.png",
@@ -169,16 +167,17 @@ function registerHotkey(spec) {
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 400,
-    height: 320,
+    height: MAIN_WINDOW_MIN_HEIGHT,
     minWidth: 320,
     maxWidth: 400,
-    minHeight: 180,
+    minHeight: MAIN_WINDOW_MIN_HEIGHT,
     resizable: false,
     show: false,
     title: "Barcode Reader Emulator",
     icon: APP_ICON_PATH,
     autoHideMenuBar: true,
     backgroundColor: "#f7f7f7",
+    useContentSize: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -204,8 +203,7 @@ function createWindow() {
 function clampWindowHeight(window, height) {
   const display = screen.getDisplayMatching(window.getBounds());
   const maxHeight = Math.max(display.workAreaSize.height - 80, 200);
-  const minimumHeight = window === settingsWindow ? 220 : 180;
-  return Math.max(minimumHeight, Math.min(Math.ceil(height), maxHeight));
+  return Math.max(MAIN_WINDOW_MIN_HEIGHT, Math.min(Math.ceil(height), maxHeight));
 }
 
 function resizeWindowToContent(window, contentHeight) {
