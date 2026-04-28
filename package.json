@@ -34,6 +34,7 @@
     "vue": "^3.5.33"
   },
   "devDependencies": {
+    "@electron/notarize": "^3.1.1",
     "@tailwindcss/vite": "^4.2.4",
     "@vitejs/plugin-vue": "^6.0.1",
     "electron": "^41.3.0",
@@ -53,6 +54,7 @@
     "directories": {
       "output": "release"
     },
+    "afterSign": "build/notarize.js",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "linux": {
       "icon": "src/icon.png",
@@ -71,6 +73,10 @@
       ]
     },
     "mac": {
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "gatekeeperAssess": false,
+      "hardenedRuntime": true,
       "icon": "src/icon.icns",
       "target": [
         {
