@@ -68,6 +68,7 @@ Push a tag like `v1.0.0` and the release workflow will:
 - macOS builds are best produced on macOS runners or machines.
 - `src/icon.png` is used for the app window icon and Ubuntu packaging.
 - macOS packaging is configured as ZIP output to avoid the flaky DMG-only `dmg-license` toolchain dependency.
+- macOS builds produce separate `x64` and `arm64` ZIP artifacts; Intel Macs should use the `x64` file.
 - `npm run dist:all` points you to the native-runner GitHub Actions flow instead of trying to force unsupported local cross-builds.
 - `release/` contains the generated artifacts.
 
