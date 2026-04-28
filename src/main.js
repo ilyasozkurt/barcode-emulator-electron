@@ -38,7 +38,10 @@ let currentAccelerator = null;
 let startupStatus = null;
 
 const SETTINGS_FILE_NAME = "settings.json";
-const APP_ICON_PATH = path.join(__dirname, "icon.png");
+const APP_ICON_PATH = path.join(
+  __dirname,
+  process.platform === "win32" ? "icon.ico" : "icon.png",
+);
 
 function getSettingsFilePath() {
   return path.join(app.getPath("userData"), SETTINGS_FILE_NAME);
