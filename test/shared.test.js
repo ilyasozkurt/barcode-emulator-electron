@@ -34,7 +34,10 @@ test("hotkey helpers create platform labels and accelerators", () => {
     },
   });
 
-  assert.equal(createAcceleratorFromSpec(hotkey), "Control+Alt+Super+A");
+  assert.equal(
+    createAcceleratorFromSpec(hotkey),
+    process.platform === "darwin" ? "Control+Alt+Command+A" : "Control+Alt+Super+A",
+  );
   assert.equal(formatHotkeyLabel(hotkey, "linux"), "Ctrl + Alt + Win + A");
   assert.equal(formatHotkeyLabel(hotkey, "darwin"), "Control + Option + Command + A");
 });
