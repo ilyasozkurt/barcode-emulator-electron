@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ${{ matrix.os-name }} release artifactsadasdasdafasfasfasfasfasfasf
+    name: Build ${{ matrix.os-name }} release artifacts
 
     runs-on: ${{ matrix.runner }}
     env:
