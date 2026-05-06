@@ -11,7 +11,6 @@ const {
   shell,
 } = require("electron");
 const { keyboard, Key } = require("@nut-tree-fork/nut-js");
-const { uIOhook } = require("uiohook-napi");
 
 const {
   DEFAULT_SETTINGS,
@@ -22,18 +21,13 @@ const {
   normalizeHotkeySpec,
 } = require("./shared");
 const {
-  createHotkeyModifierPlan,
-  getRestoreKeycodes,
-  isTrackedModifierKeycode,
-  mapModifierKeycodesToNutKeys,
+  getHotkeyModifierReleaseKeys,
 } = require("./modifier-state");
 
 let mainWindow = null;
 let settings = mergeSettings(DEFAULT_SETTINGS, {});
 let currentAccelerator = null;
 let startupStatus = null;
-let modifierTrackingStarted = false;
-const pressedModifierKeycodes = new Set();
 
 const SETTINGS_FILE_NAME = "settings.json";
 const MAIN_WINDOW_MIN_HEIGHT = 150;
@@ -105,59 +99,11 @@ function wait(milliseconds) {
   });
 }
 
-function handleGlobalKeydown(event) {
-  if (isTrackedModifierKeycode(event.keycode)) {
-    pressedModifierKeycodes.add(event.keycode);
-  }
-}
-
-function handleGlobalKeyup(event) {
-  if (isTrackedModifierKeycode(event.keycode)) {
-    pressedModifierKeycodes.delete(event.keycode);
-  }
-}
-
-function startModifierTracking() {
-  if (modifierTrackingStarted) {
-    return;
-  }
-
-  uIOhook.on("keydown", handleGlobalKeydown);
-  uIOhook.on("keyup", handleGlobalKeyup);
-  uIOhook.start();
-  modifierTrackingStarted = true;
-}
-
-function stopModifierTracking() {
-  if (!modifierTrackingStarted) {
-    return;
-  }
-
-  uIOhook.off("keydown", handleGlobalKeydown);
-  uIOhook.off("keyup", handleGlobalKeyup);
-  uIOhook.stop();
-  modifierTrackingStarted = false;
-  pressedModifierKeycodes.clear();
-}
-
 async function releaseHotkeyModifiersForEmulation() {
-  const modifierPlan = createHotkeyModifierPlan(settings.hotkey, pressedModifierKeycodes);
-  const releaseKeys = mapModifierKeycodesToNutKeys(modifierPlan.releaseKeycodes);
+  const releaseKeys = getHotkeyModifierReleaseKeys(settings.hotkey);
 
   if (releaseKeys.length > 0) {
     await keyboard.releaseKey(...releaseKeys);
-  }
-
-  return modifierPlan;
-}
-
-async function restoreHotkeyModifiersAfterEmulation(modifierPlan) {
-  const restoreKeys = mapModifierKeycodesToNutKeys(
-    getRestoreKeycodes(modifierPlan, pressedModifierKeycodes),
-  );
-
-  if (restoreKeys.length > 0) {
-    await keyboard.pressKey(...restoreKeys);
   }
 }
 
@@ -173,20 +119,15 @@ async function emulateBarcodeInput() {
     return;
   }
 
-  const modifierPlan = await releaseHotkeyModifiersForEmulation();
+  await releaseHotkeyModifiersForEmulation();
+  await wait(150);
+  shell.beep();
 
-  try {
-    await wait(150);
-    shell.beep();
+  keyboard.config.autoDelayMs = settings.delayMs;
+  await keyboard.type(normalizedValue);
 
-    keyboard.config.autoDelayMs = settings.delayMs;
-    await keyboard.type(normalizedValue);
-
-    if (settings.sendEnter) {
-      await keyboard.type(Key.Enter);
-    }
-  } finally {
-    await restoreHotkeyModifiersAfterEmulation(modifierPlan);
+  if (settings.sendEnter) {
+    await keyboard.type(Key.Enter);
   }
 
   sendStatus({
@@ -355,7 +296,6 @@ ipcMain.handle("barcode:emulate", async () => {
 
 app.whenReady().then(async () => {
   await loadSettings();
-  startModifierTracking();
 
   try {
     registerHotkey(settings.hotkey);
@@ -383,7 +323,6 @@ app.whenReady().then(async () => {
 });
 
 app.on("will-quit", () => {
-  stopModifierTracking();
   globalShortcut.unregisterAll();
 });
 
