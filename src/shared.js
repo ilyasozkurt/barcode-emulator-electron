@@ -98,6 +98,14 @@ function normalizeHotkeySpec(spec) {
   };
 }
 
+function getEnabledHotkeyModifiers(spec) {
+  const { modifiers } = normalizeHotkeySpec(spec);
+
+  return Object.entries(modifiers)
+    .filter(([, enabled]) => enabled)
+    .map(([modifier]) => modifier);
+}
+
 function mergeSettings(baseSettings, nextValues = {}) {
   return {
     barcodeValue: typeof nextValues.barcodeValue === "string"
@@ -163,6 +171,7 @@ module.exports = {
   clampDelay,
   createAcceleratorFromSpec,
   formatHotkeyLabel,
+  getEnabledHotkeyModifiers,
   hasHotkeyModifier,
   mergeSettings,
   normalizeBarcodeValue,
