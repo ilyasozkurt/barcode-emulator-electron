@@ -58,6 +58,10 @@ jobs:
           p12-file-base64: ${{ env.MACOS_CERTIFICATE_P12 }}
           p12-password: ${{ env.MACOS_CERTIFICATE_PASSWORD }}
 
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev libxtst-dev libxinerama-dev libxt-dev
+
       - name: Install dependencies
         run: npm ci
 
