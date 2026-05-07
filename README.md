@@ -1,31 +1,65 @@
-# Barcode Emulator Electron
+# Barcode Scanner Emulator
 
-Cross-platform Electron desktop app that emulates a barcode reader by typing a configured value into the currently focused application when a global hotkey is pressed.
+Cross-platform desktop utility built with Electron and Vue that simulates a barcode scanner by injecting keyboard input into the currently focused application using configurable global shortcuts.
 
-<img width="1206" height="419" alt="merged-image" src="https://github.com/user-attachments/assets/cec9569e-ce33-4498-b439-7be3f9be518d" />
+Designed for QA workflows, POS testing, warehouse systems, demos, and development environments where physical barcode scanner hardware is unavailable.
+
+<img width="1206" height="419" alt="Barcode Scanner Emulator Preview" src="https://github.com/user-attachments/assets/cec9569e-ce33-4498-b439-7be3f9be518d" />
+
+---
 
 ## Features
 
-- Editable barcode value
-- Configurable global hotkey
-- Adjustable delay between key presses
+- Simulate HID-style barcode scanner keyboard input
+- Configurable global hotkeys
+- Adjustable typing speed / key delay
 - Optional trailing `Enter`
+- Works with desktop apps, browser apps, POS systems, and internal tooling
+- Cross-platform support for Windows, macOS, and Linux
 - Persistent settings between launches
+- Lightweight desktop utility
+- Offline-first workflow
+- Open-source project
 
-## Getting started
+---
+
+## Example Use Cases
+
+- QA testing without physical scanner hardware
+- POS workflow validation
+- Warehouse and logistics software testing
+- ERP integration testing
+- Internal demos and onboarding environments
+- Local development workflows
+- Simulating keyboard wedge barcode readers
+
+---
+
+## Getting Started
+
+Install dependencies:
 
 ```bash
 npm install
+```
+
+Start the development environment:
+
+```bash
 npm start
 ```
 
-## Build distributable apps
+---
+
+## Build Distributable Applications
+
+Build the current platform:
 
 ```bash
 npm run dist
 ```
 
-### Platform-specific builds
+### Platform-Specific Builds
 
 ```bash
 npm run dist:linux
@@ -33,51 +67,131 @@ npm run dist:win
 npm run dist:mac
 ```
 
-To request all three targets from one command:
+### Multi-Platform Build Guidance
 
 ```bash
 npm run dist:all
 ```
 
-That command intentionally stops with guidance instead of attempting unsupported cross-packaging from one host.
+This command intentionally provides guidance instead of attempting unsupported cross-platform packaging from a single machine.
 
-### Recommended way to build Windows + macOS + Ubuntu
+---
 
-Use the included GitHub Actions workflow. It runs a native build matrix on:
+## Recommended Build Strategy
 
-- Ubuntu for Ubuntu artifacts (`.deb` and AppImage)
-- Windows for Windows artifacts
-- macOS for macOS artifacts
+The recommended approach is using the included GitHub Actions workflow, which builds artifacts natively on each operating system:
 
-That avoids the usual cross-packaging limitations from a single local machine.
+- Ubuntu → `.deb` + AppImage
+- Windows → Windows installers
+- macOS → ZIP artifacts
 
-The build workflow runs automatically for pushes to version branches matching `v*`.
+This avoids common Electron cross-packaging limitations and produces more reliable release artifacts.
 
-### Publish a versioned release
+The workflow automatically runs for pushes to version branches matching:
 
-Push a tag like `v1.0.0` and the release workflow will:
+```text
+v*
+```
 
-- build Ubuntu artifacts on Ubuntu
-- build Windows artifacts on Windows
-- build macOS ZIP artifacts on macOS
-- publish the generated installers/binaries to a GitHub release
+---
 
-### Local build notes
+## Publishing a Release
 
-- Ubuntu builds produce `.deb` and AppImage artifacts.
-- If by Linux you mean Ubuntu, use the Ubuntu runner/build path in this project.
-- Windows installers cannot be reliably produced from Linux here because `electron-builder` requires Wine.
-- Windows builds are best produced on Windows runners or machines.
-- macOS builds are best produced on macOS runners or machines.
-- `src/icon.png` is used for the app window icon and Ubuntu packaging.
-- `src/icon.icns` is used for the macOS app bundle icon.
-- macOS packaging is configured as ZIP output to avoid the flaky DMG-only `dmg-license` toolchain dependency.
-- macOS builds produce separate `x64` and `arm64` ZIP artifacts; Intel Macs should use the `x64` file.
-- To avoid Gatekeeper blocking the macOS app, sign and notarize it by setting `MACOS_CERTIFICATE_P12`, `MACOS_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` in GitHub Actions secrets.
-- `npm run dist:all` points you to the native-runner GitHub Actions flow instead of trying to force unsupported local cross-builds.
-- `release/` contains the generated artifacts.
+Push a version tag such as:
 
-## Notes
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
 
-- Keyboard emulation and global shortcuts may require accessibility/input permissions depending on the operating system.
-- The app is tuned for a US keyboard layout, matching the original barcode reader emulator behavior.
+The release workflow will automatically:
+
+- Build Ubuntu artifacts
+- Build Windows artifacts
+- Build macOS artifacts
+- Publish generated binaries to GitHub Releases
+
+---
+
+## Build Notes
+
+### Linux / Ubuntu
+
+- Ubuntu builds generate:
+  - `.deb`
+  - AppImage
+
+### Windows
+
+- Windows installers are best built on native Windows runners or machines.
+- Cross-building Windows installers from Linux may require Wine and can be unreliable.
+
+### macOS
+
+- macOS builds are best produced on native macOS runners or machines.
+- Packaging uses ZIP output for improved reliability and to avoid flaky DMG-related tooling issues.
+- Separate `x64` and `arm64` artifacts are generated.
+- Intel Macs should use the `x64` build.
+
+### Application Icons
+
+- `src/icon.png`
+  - Used for the app window icon and Linux packaging
+- `src/icon.icns`
+  - Used for the macOS application bundle icon
+
+### Code Signing & Notarization (macOS)
+
+To avoid Gatekeeper warnings and improve user trust, configure the following GitHub Actions secrets:
+
+- `MACOS_CERTIFICATE_P12`
+- `MACOS_CERTIFICATE_PASSWORD`
+- `APPLE_ID`
+- `APPLE_APP_SPECIFIC_PASSWORD`
+- `APPLE_TEAM_ID`
+
+### Release Output
+
+Generated artifacts are stored in:
+
+```text
+release/
+```
+
+---
+
+## Permissions & System Notes
+
+Depending on the operating system, keyboard emulation and global shortcuts may require:
+
+- Accessibility permissions
+- Input monitoring permissions
+- Global shortcut permissions
+
+The application is currently optimized for US keyboard layouts, matching typical barcode scanner keyboard wedge behavior.
+
+---
+
+## Tech Stack
+
+- Electron
+- Vue
+- Tailwind CSS
+- electron-builder
+- GitHub Actions
+
+---
+
+## Website
+
+Official website:
+
+```text
+https://barcodescanneremulator.dev
+```
+
+---
+
+## License
+
+MIT
