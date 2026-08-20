@@ -63,6 +63,7 @@ contextBridge.exposeInMainWorld("barcodeEmulator", {
     };
   },
   setHotkey: (hotkey) => ipcRenderer.invoke("hotkey:update", hotkey),
+  setQuickToggleHotkey: (hotkey) => ipcRenderer.invoke("quickToggleHotkey:update", hotkey),
   syncBarcodeValue: (barcodeValue) => ipcRenderer.send("barcode-value:sync", barcodeValue),
   updateSettings: (partialSettings) => ipcRenderer.invoke("settings:update", partialSettings),
   getHistory: () => ipcRenderer.invoke("history:get"),

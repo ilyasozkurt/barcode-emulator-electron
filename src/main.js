@@ -4,6 +4,8 @@ const path = require("node:path");
 const {
   app,
   BrowserWindow,
+  Menu,
+  Tray,
   globalShortcut,
   ipcMain,
   Notification,
@@ -20,6 +22,7 @@ const {
   mergeSettings,
   normalizeBarcodeValue,
   normalizeHotkeySpec,
+  normalizeQuickToggleHotkeySpec,
 } = require("./shared");
 const {
   createHotkeyModifierPlan,
@@ -29,10 +32,13 @@ const {
 } = require("./modifier-state");
 
 let mainWindow = null;
+let tray = null;
 let settings = mergeSettings(DEFAULT_SETTINGS, {});
 let currentAccelerator = null;
+let currentQuickToggleAccelerator = null;
 let startupStatus = null;
 let modifierTrackingStarted = false;
+let isQuitting = false;
 const pressedModifierKeycodes = new Set();
 
 const singleInstanceLockAcquired = app.requestSingleInstanceLock();
@@ -69,6 +75,101 @@ function applyStartOnBoot(enabled) {
   app.setLoginItemSettings({ openAtLogin: Boolean(enabled) });
 }
 
+function toggleMainWindowVisibility() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+
+  if (mainWindow.isVisible() && !mainWindow.isMinimized()) {
+    mainWindow.hide();
+    return;
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+function registerQuickToggleHotkey(spec = settings.quickToggleHotkey) {
+  const accelerator = createAcceleratorFromSpec(spec, normalizeQuickToggleHotkeySpec);
+  const previousAccelerator = currentQuickToggleAccelerator;
+
+  if (previousAccelerator) {
+    globalShortcut.unregister(previousAccelerator);
+  }
+
+  const registered = globalShortcut.register(accelerator, toggleMainWindowVisibility);
+  if (!registered) {
+    currentQuickToggleAccelerator = null;
+
+    if (previousAccelerator) {
+      const restored = globalShortcut.register(previousAccelerator, toggleMainWindowVisibility);
+      currentQuickToggleAccelerator = restored ? previousAccelerator : null;
+    }
+
+    throw new Error(
+      `The show/hide hotkey ${formatHotkeyLabel(spec, process.platform, normalizeQuickToggleHotkeySpec)} could not be registered. Try another combination.`,
+    );
+  }
+
+  currentQuickToggleAccelerator = accelerator;
+}
+
+function unregisterQuickToggleHotkey() {
+  if (currentQuickToggleAccelerator) {
+    globalShortcut.unregister(currentQuickToggleAccelerator);
+    currentQuickToggleAccelerator = null;
+  }
+}
+
+function applyQuickToggleSetting(enabled) {
+  if (enabled) {
+    registerQuickToggleHotkey();
+  } else {
+    unregisterQuickToggleHotkey();
+  }
+  updateTrayMenu();
+}
+
+function updateTrayMenu() {
+  if (!tray || tray.isDestroyed()) {
+    return;
+  }
+
+  const quickToggleLabel = formatHotkeyLabel(settings.quickToggleHotkey, process.platform, normalizeQuickToggleHotkeySpec);
+
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      {
+        label: `Show/Hide (${quickToggleLabel})`,
+        click: toggleMainWindowVisibility,
+      },
+      { type: "separator" },
+      {
+        label: "Quit",
+        click: () => {
+          isQuitting = true;
+          app.quit();
+        },
+      },
+    ]),
+  );
+}
+
+function createTray() {
+  if (tray) {
+    return;
+  }
+
+  tray = new Tray(APP_ICON_PATH);
+  tray.setToolTip("Barcode Reader Emulator");
+  updateTrayMenu();
+  tray.on("click", toggleMainWindowVisibility);
+}
+
 async function loadSettings() {
   try {
     const saved = await fs.readFile(getSettingsFilePath(), "utf8");
@@ -89,6 +190,15 @@ async function loadSettings() {
   }
 
   applyStartOnBoot(settings.startOnBoot);
+
+  try {
+    applyQuickToggleSetting(settings.quickToggleEnabled);
+  } catch (error) {
+    startupStatus = {
+      type: "warning",
+      message: error.message,
+    };
+  }
 
   return settings;
 }
@@ -144,6 +254,7 @@ function getRendererState() {
   return {
     settings,
     hotkeyLabel: formatHotkeyLabel(settings.hotkey),
+    quickToggleHotkeyLabel: formatHotkeyLabel(settings.quickToggleHotkey, process.platform, normalizeQuickToggleHotkeySpec),
   };
 }
 
@@ -354,6 +465,13 @@ function createWindow() {
     setTimeout(showWindowOnce, 300);
   });
 
+  mainWindow.on("close", (event) => {
+    if (!isQuitting && settings.quickToggleEnabled) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+  });
+
   mainWindow.on("closed", () => {
     mainWindow = null;
     showMainWindowOnce = () => {};
@@ -396,6 +514,10 @@ ipcMain.handle("settings:update", async (_event, partialSettings) => {
 
   if (partialSettings && partialSettings.startOnBoot !== undefined) {
     applyStartOnBoot(settings.startOnBoot);
+  }
+
+  if (partialSettings && partialSettings.quickToggleEnabled !== undefined) {
+    applyQuickToggleSetting(settings.quickToggleEnabled);
   }
 
   await saveSettings();
@@ -455,6 +577,35 @@ ipcMain.handle("hotkey:update", async (_event, nextHotkey) => {
   }
 });
 
+ipcMain.handle("quickToggleHotkey:update", async (_event, nextHotkey) => {
+  try {
+    const normalizedHotkey = normalizeQuickToggleHotkeySpec(nextHotkey);
+
+    if (settings.quickToggleEnabled) {
+      registerQuickToggleHotkey(normalizedHotkey);
+    }
+
+    settings = mergeSettings(settings, { quickToggleHotkey: normalizedHotkey });
+    updateTrayMenu();
+    await saveSettings();
+
+    const rendererState = getRendererState();
+    sendStatus({
+      type: "success",
+      message: `Show/hide hotkey updated to ${rendererState.quickToggleHotkeyLabel}.`,
+      notify: true,
+    });
+    return rendererState;
+  } catch (error) {
+    sendStatus({
+      type: "error",
+      message: error.message,
+      notify: true,
+    });
+    throw error;
+  }
+});
+
 ipcMain.handle("barcode:emulate", async () => {
   try {
     await emulateBarcodeInput();
@@ -501,6 +652,7 @@ if (singleInstanceLockAcquired) {
       app.dock.setIcon(APP_ICON_PATH);
     }
 
+    createTray();
     await createWindow();
 
     app.on("activate", async () => {
@@ -511,6 +663,10 @@ if (singleInstanceLockAcquired) {
   }).catch((error) => {
     console.error(error);
     app.quit();
+  });
+
+  app.on("before-quit", () => {
+    isQuitting = true;
   });
 
   app.on("will-quit", () => {

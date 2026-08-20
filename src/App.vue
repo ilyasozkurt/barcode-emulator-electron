@@ -114,24 +114,60 @@
           </section>
 
           <section v-else-if="activeSection === 'settings'" aria-label="Settings" class="grid gap-5">
-            <div class="flex items-center gap-3">
-              <span class="text-[0.8rem] font-semibold text-slate-500">Start on boot</span>
-              <ToggleSwitch
-                id="startOnBootToggle"
-                v-model="startOnBoot"
-                :disabled="!bridgeAvailable || !controlsEnabled"
-                @update:model-value="handleStartOnBootUpdate"
-              />
+            <div class="grid gap-1.5">
+              <div class="flex items-center gap-3">
+                <span class="text-[0.8rem] font-semibold text-slate-500">Start on boot</span>
+                <ToggleSwitch
+                  id="startOnBootToggle"
+                  v-model="startOnBoot"
+                  :disabled="!bridgeAvailable || !controlsEnabled"
+                  @update:model-value="handleStartOnBootUpdate"
+                />
+              </div>
+              <p class="m-0 text-[0.72rem] text-slate-400">
+                Launch the app automatically in the background whenever you sign in.
+              </p>
             </div>
 
-            <div class="flex items-center gap-3">
-              <span class="text-[0.8rem] font-semibold text-slate-500">Notifications</span>
-              <ToggleSwitch
-                id="notificationsEnabledToggle"
-                v-model="notificationsEnabled"
-                :disabled="!bridgeAvailable || !controlsEnabled"
-                @update:model-value="handleNotificationsEnabledUpdate"
-              />
+            <div class="grid gap-1.5">
+              <div class="flex items-center gap-3">
+                <span class="text-[0.8rem] font-semibold text-slate-500">Notifications</span>
+                <ToggleSwitch
+                  id="notificationsEnabledToggle"
+                  v-model="notificationsEnabled"
+                  :disabled="!bridgeAvailable || !controlsEnabled"
+                  @update:model-value="handleNotificationsEnabledUpdate"
+                />
+              </div>
+              <p class="m-0 text-[0.72rem] text-slate-400">
+                Show a desktop notification each time a barcode value is emulated.
+              </p>
+            </div>
+
+            <div class="grid gap-1.5">
+              <div class="flex items-center gap-3">
+                <span class="text-[0.8rem] font-semibold text-slate-500">Show/hide with hotkey</span>
+                <ToggleSwitch
+                  id="quickToggleEnabledToggle"
+                  v-model="quickToggleEnabled"
+                  :disabled="!bridgeAvailable || !controlsEnabled"
+                  @update:model-value="handleQuickToggleEnabledUpdate"
+                />
+                <span class="text-[0.72rem] text-slate-400">{{ quickToggleHotkeyLabel }}</span>
+                <button
+                  id="editQuickToggleHotkeyButton"
+                  type="button"
+                  class="inline-flex cursor-pointer h-6 min-w-6 items-center justify-center rounded-full border border-slate-300 px-1.5 text-[0.7rem] font-medium text-slate-600 transition hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                  :disabled="!bridgeAvailable || !controlsEnabled || quickToggleHotkeySaveBusy"
+                  @click="toggleQuickToggleHotkeyRecording"
+                >
+                  <span v-if="quickToggleHotkeyRecording">Cancel</span>
+                  <i v-else class="pi pi-pencil text-[0.68rem]" aria-hidden="true" />
+                </button>
+              </div>
+              <p class="m-0 text-[0.72rem] text-slate-400">
+                Press {{ quickToggleHotkeyLabel }} anytime to show or hide this window from the system tray. Closing the window will keep it running in the tray.
+              </p>
             </div>
           </section>
 
@@ -251,6 +287,28 @@
       </section>
     </Drawer>
 
+    <Drawer
+      v-model:visible="quickToggleHotkeyRecording"
+      position="bottom"
+      class="h-auto! max-h-[50vh]! rounded-t-3xl"
+      pt:header:class="!px-5 !py-4"
+      aria-live="polite"
+    >
+      <template #header>
+        <div class="flex items-center gap-2 text-base font-semibold text-slate-900">
+          <span class="relative flex h-3 w-3">
+            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+            <span class="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
+          </span>
+          <span>Recording show/hide shortcut</span>
+        </div>
+      </template>
+
+      <section class="grid gap-1 pb-2">
+        <p class="m-0 text-[0.82rem] text-slate-500">{{ quickToggleHotkeyRecordingMessage }}</p>
+      </section>
+    </Drawer>
+
     <Dialog
       v-model:visible="clearHistoryConfirmVisible"
       modal
@@ -305,8 +363,8 @@ const MODIFIER_ONLY_KEYS = new Set(["Alt", "AltGraph", "Control", "Meta", "Shift
 
 const NAV_ITEMS = [
   { id: "emulator", label: "Emulator", icon: "pi-barcode" },
-  { id: "settings", label: "Settings", icon: "pi-cog" },
   { id: "history", label: "History", icon: "pi-history" },
+  { id: "settings", label: "Settings", icon: "pi-cog" },
   { id: "about", label: "About", icon: "pi-info-circle" },
 ];
 
@@ -340,7 +398,7 @@ function hasHotkeyModifier(modifiers = {}) {
   return Boolean(modifiers.control || modifiers.alt || modifiers.shift || modifiers.super);
 }
 
-function extractRecordedHotkeyKey(event) {
+function extractRecordedHotkeyKey(event, allowFunctionKeys = false) {
   if (/^Key[A-Z]$/.test(event.code)) {
     return event.code.slice(3);
   }
@@ -351,6 +409,10 @@ function extractRecordedHotkeyKey(event) {
 
   if (/^Numpad[0-9]$/.test(event.code)) {
     return event.code.slice(6);
+  }
+
+  if (allowFunctionKeys && /^F([1-9]|1[0-2])$/.test(event.key ?? "")) {
+    return event.key;
   }
 
   const normalizedKey = String(event.key ?? "").toUpperCase();
@@ -369,6 +431,7 @@ const suffixKeyOptions = [
 ];
 const startOnBoot = ref(false);
 const notificationsEnabled = ref(true);
+const quickToggleEnabled = ref(false);
 const isTyping = ref(false);
 const statusMessage = ref("");
 const statusType = ref("idle");
@@ -412,6 +475,16 @@ const sendBusy = ref(false);
 const hotkeyRecording = ref(false);
 const hotkeySaveBusy = ref(false);
 const hotkeyRecordingMessage = ref("Press the new shortcut now. Use at least one modifier and one letter or number. Press Esc to cancel.");
+const quickToggleDraftHotkey = ref(
+  cloneHotkey({
+    key: "F9",
+    modifiers: { control: false, alt: false, shift: false, super: false },
+  }),
+);
+const quickToggleHotkeyLabel = ref("Loading hotkey...");
+const quickToggleHotkeyRecording = ref(false);
+const quickToggleHotkeySaveBusy = ref(false);
+const quickToggleHotkeyRecordingMessage = ref("Press the new shortcut now. F1-F12 can be used alone; other keys need at least one modifier. Press Esc to cancel.");
 const pageRoot = ref(null);
 const contentPanel = ref(null);
 const lockedContentHeight = ref(null);
@@ -445,6 +518,9 @@ function applySettingsState(settingsState) {
   suffixKey.value = settingsState.settings.suffixKey;
   startOnBoot.value = settingsState.settings.startOnBoot;
   notificationsEnabled.value = settingsState.settings.notificationsEnabled;
+  quickToggleEnabled.value = settingsState.settings.quickToggleEnabled;
+  quickToggleHotkeyLabel.value = settingsState.quickToggleHotkeyLabel;
+  quickToggleDraftHotkey.value = cloneHotkey(settingsState.settings.quickToggleHotkey);
   draftHotkey.value = cloneHotkey(settingsState.settings.hotkey);
   controlsEnabled.value = true;
 }
@@ -628,6 +704,39 @@ async function handleNotificationsEnabledUpdate(value) {
   }
 }
 
+async function handleQuickToggleEnabledUpdate(value) {
+  quickToggleEnabled.value = value;
+
+  if (!currentSettings.value || value === currentSettings.value.quickToggleEnabled) {
+    return;
+  }
+
+  try {
+    await persistSettings({ quickToggleEnabled: value });
+  } catch (error) {
+    setStatus(error.message, "error");
+  }
+}
+
+async function saveQuickToggleHotkey(nextHotkey = quickToggleDraftHotkey.value) {
+  quickToggleHotkeySaveBusy.value = true;
+
+  try {
+    const settingsState = await api.setQuickToggleHotkey(nextHotkey);
+    applySettingsState(settingsState);
+    setStatus(`Show/hide hotkey updated to ${settingsState.quickToggleHotkeyLabel}.`, "success");
+  } catch (error) {
+    setStatus(error.message, "error");
+  } finally {
+    quickToggleHotkeySaveBusy.value = false;
+  }
+}
+
+function toggleQuickToggleHotkeyRecording() {
+  quickToggleHotkeyRecording.value = !quickToggleHotkeyRecording.value;
+  quickToggleHotkeyRecordingMessage.value = "Press the new shortcut now. F1-F12 can be used alone; other keys need at least one modifier. Press Esc to cancel.";
+}
+
 function toggleHotkeyRecording() {
   hotkeyRecording.value = !hotkeyRecording.value;
   hotkeyRecordingMessage.value = "Press the new shortcut now. Use at least one modifier and one letter or number. Press Esc to cancel.";
@@ -676,6 +785,52 @@ async function handleHotkeyRecordingKeydown(event) {
   hotkeyRecording.value = false;
   hotkeyRecordingMessage.value = "Press the new shortcut now. Use at least one modifier and one letter or number. Press Esc to cancel.";
   await saveHotkey(recordedHotkey);
+}
+
+async function handleQuickToggleHotkeyRecordingKeydown(event) {
+  if (!quickToggleHotkeyRecording.value) {
+    return;
+  }
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (event.key === "Escape") {
+    quickToggleHotkeyRecording.value = false;
+    quickToggleHotkeyRecordingMessage.value = "Press the new shortcut now. F1-F12 can be used alone; other keys need at least one modifier. Press Esc to cancel.";
+    return;
+  }
+
+  if (event.repeat || MODIFIER_ONLY_KEYS.has(event.key)) {
+    return;
+  }
+
+  const recordedKey = extractRecordedHotkeyKey(event, true);
+  if (!recordedKey) {
+    quickToggleHotkeyRecordingMessage.value = "Use a letter A-Z, digit 0-9, or F1-F12 for the main key.";
+    return;
+  }
+
+  const recordedHotkey = cloneHotkey({
+    key: recordedKey,
+    modifiers: {
+      control: event.ctrlKey,
+      alt: event.altKey,
+      shift: event.shiftKey,
+      super: event.metaKey,
+    },
+  });
+
+  const isFunctionKey = /^F([1-9]|1[0-2])$/.test(recordedKey);
+  if (!isFunctionKey && !hasHotkeyModifier(recordedHotkey.modifiers)) {
+    quickToggleHotkeyRecordingMessage.value = "Include at least one modifier key such as Ctrl, Alt, Shift, or Win/Command.";
+    return;
+  }
+
+  quickToggleDraftHotkey.value = recordedHotkey;
+  quickToggleHotkeyRecording.value = false;
+  quickToggleHotkeyRecordingMessage.value = "Press the new shortcut now. F1-F12 can be used alone; other keys need at least one modifier. Press Esc to cancel.";
+  await saveQuickToggleHotkey(recordedHotkey);
 }
 
 async function init() {
@@ -758,6 +913,7 @@ async function lockContentHeight() {
 onMounted(async () => {
   await init();
   window.addEventListener("keydown", handleHotkeyRecordingKeydown, true);
+  window.addEventListener("keydown", handleQuickToggleHotkeyRecordingKeydown, true);
   await lockContentHeight();
 });
 
@@ -767,5 +923,6 @@ onBeforeUnmount(() => {
   clearTimeout(valueSaveTimer);
   clearTimeout(delaySaveTimer);
   window.removeEventListener("keydown", handleHotkeyRecordingKeydown, true);
+  window.removeEventListener("keydown", handleQuickToggleHotkeyRecordingKeydown, true);
 });
 </script>

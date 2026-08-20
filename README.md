@@ -19,6 +19,7 @@ Designed for QA workflows, POS testing, warehouse systems, demos, and developmen
 - Recently emulated history with one-click reuse and a confirm-before-clear dialog
 - Optional desktop notifications for emulation results, toggleable in Settings
 - Start on boot toggle for launching automatically with the system
+- System tray support with a fully customizable global show/hide hotkey (default F9, recorded the same way as the Emulate hotkey) to toggle the app window (optional, toggleable in Settings); closing the window minimizes it to the tray instead of quitting
 - Single-instance enforcement (relaunching focuses the existing window)
 - Sidebar navigation (Emulator / Settings / History / About) with a fixed-height window and internal scrolling
 - Works with desktop apps, browser apps, POS systems, and internal tooling
@@ -47,7 +48,7 @@ Designed for QA workflows, POS testing, warehouse systems, demos, and developmen
 The app is organized into four sidebar tabs:
 
 - **Emulator** — Enter the barcode value, pick a suffix key (`None` / `Enter` / `Tab`) and delay, then press **Emulate** (or the global hotkey) to type it into the focused window. The global hotkey is editable directly from this tab.
-- **Settings** — Toggle **Start on boot** and **Notifications** (desktop notifications for emulation results).
+- **Settings** — Toggle **Start on boot**, **Notifications** (desktop notifications for emulation results), and **Show/hide with hotkey** (system tray quick-toggle with a fully customizable hotkey, default F9, editable via the same press-to-record flow as the Emulate hotkey; when enabled, closing the window keeps it running in the tray, and the hotkey or tray icon brings it back).
 - **History** — Browse recently emulated values, reuse one with **Use**, or clear the list (with a confirmation prompt).
 - **About** — App version, links to the website, GitHub repository, and issue tracker.
 

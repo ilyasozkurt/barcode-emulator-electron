@@ -41,6 +41,12 @@ const SUPPORTED_BARCODE_CHAR = /^[0-9A-Za-z`~!@#$%^&*()_+\-=\[\]{}\\|;:'",.<>/?]
 
 const SUFFIX_KEYS = Object.freeze(["none", "enter", "tab"]);
 
+const HOTKEY_FUNCTION_KEYS = Object.freeze([
+  "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
+]);
+
+const QUICK_TOGGLE_KEYS = Object.freeze([...HOTKEY_KEYS, ...HOTKEY_FUNCTION_KEYS]);
+
 const DEFAULT_SETTINGS = Object.freeze({
   barcodeValue: "test",
   delayMs: 10,
@@ -48,6 +54,16 @@ const DEFAULT_SETTINGS = Object.freeze({
   suffixKey: "enter",
   startOnBoot: false,
   notificationsEnabled: true,
+  quickToggleEnabled: false,
+  quickToggleHotkey: {
+    key: "F9",
+    modifiers: {
+      control: false,
+      alt: false,
+      shift: false,
+      super: false,
+    },
+  },
   hotkey: {
     key: "A",
     modifiers: {
@@ -108,6 +124,31 @@ function normalizeHotkeySpec(spec) {
   };
 }
 
+function normalizeQuickToggleHotkeySpec(spec) {
+  const hotkey = spec ?? {};
+  const key = String(hotkey.key ?? DEFAULT_SETTINGS.quickToggleHotkey.key).toUpperCase();
+
+  if (!QUICK_TOGGLE_KEYS.includes(key)) {
+    throw new Error("Show/hide hotkey must use a letter A-Z, digit 0-9, or F1-F12.");
+  }
+
+  const modifiers = hotkey.modifiers ?? {};
+
+  if (!HOTKEY_FUNCTION_KEYS.includes(key) && !hasHotkeyModifier(modifiers)) {
+    throw new Error("Show/hide hotkey must include at least one modifier key.");
+  }
+
+  return {
+    key,
+    modifiers: {
+      control: Boolean(modifiers.control),
+      alt: Boolean(modifiers.alt),
+      shift: Boolean(modifiers.shift),
+      super: Boolean(modifiers.super),
+    },
+  };
+}
+
 function getEnabledHotkeyModifiers(spec) {
   const { modifiers } = normalizeHotkeySpec(spec);
 
@@ -136,14 +177,20 @@ function mergeSettings(baseSettings, nextValues = {}) {
     notificationsEnabled: nextValues.notificationsEnabled === undefined
       ? (baseSettings.notificationsEnabled === undefined ? true : Boolean(baseSettings.notificationsEnabled))
       : Boolean(nextValues.notificationsEnabled),
+    quickToggleEnabled: nextValues.quickToggleEnabled === undefined
+      ? Boolean(baseSettings.quickToggleEnabled)
+      : Boolean(nextValues.quickToggleEnabled),
+    quickToggleHotkey: nextValues.quickToggleHotkey === undefined
+      ? normalizeQuickToggleHotkeySpec(baseSettings.quickToggleHotkey)
+      : normalizeQuickToggleHotkeySpec(nextValues.quickToggleHotkey),
     hotkey: nextValues.hotkey === undefined
       ? normalizeHotkeySpec(baseSettings.hotkey)
       : normalizeHotkeySpec(nextValues.hotkey),
   };
 }
 
-function createAcceleratorFromSpec(spec) {
-  const hotkey = normalizeHotkeySpec(spec);
+function createAcceleratorFromSpec(spec, normalize = normalizeHotkeySpec) {
+  const hotkey = normalize(spec);
   const parts = [];
 
   if (hotkey.modifiers.control) {
@@ -163,8 +210,8 @@ function createAcceleratorFromSpec(spec) {
   return parts.join("+");
 }
 
-function formatHotkeyLabel(spec, platform = process.platform) {
-  const hotkey = normalizeHotkeySpec(spec);
+function formatHotkeyLabel(spec, platform = process.platform, normalize = normalizeHotkeySpec) {
+  const hotkey = normalize(spec);
   const parts = [];
 
   if (hotkey.modifiers.control) {
@@ -187,7 +234,9 @@ function formatHotkeyLabel(spec, platform = process.platform) {
 module.exports = {
   DEFAULT_SETTINGS,
   HOTKEY_KEYS,
+  HOTKEY_FUNCTION_KEYS,
   SUFFIX_KEYS,
+  QUICK_TOGGLE_KEYS,
   clampDelay,
   createAcceleratorFromSpec,
   formatHotkeyLabel,
@@ -197,4 +246,5 @@ module.exports = {
   normalizeBarcodeValue,
   normalizeHotkeySpec,
   normalizeSuffixKey,
+  normalizeQuickToggleHotkeySpec,
 };
