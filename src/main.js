@@ -35,6 +35,12 @@ let startupStatus = null;
 let modifierTrackingStarted = false;
 const pressedModifierKeycodes = new Set();
 
+const singleInstanceLockAcquired = app.requestSingleInstanceLock();
+
+if (!singleInstanceLockAcquired) {
+  app.quit();
+}
+
 const SETTINGS_FILE_NAME = "settings.json";
 const MAIN_WINDOW_MIN_HEIGHT = 150;
 const APP_ICON_PATH = path.join(
@@ -353,42 +359,57 @@ ipcMain.handle("barcode:emulate", async () => {
   }
 });
 
-app.whenReady().then(async () => {
-  await loadSettings();
-  startModifierTracking();
-
-  try {
-    registerHotkey(settings.hotkey);
-  } catch (error) {
-    startupStatus = {
-      type: "warning",
-      message: error.message,
-    };
-  }
-
-  if (process.platform === "darwin" && app.dock) {
-    app.dock.setIcon(APP_ICON_PATH);
-  }
-
-  await createWindow();
-
-  app.on("activate", async () => {
+if (singleInstanceLockAcquired) {
+  app.on("second-instance", () => {
     if (!mainWindow) {
-      await createWindow();
+      return;
+    }
+
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore();
+    }
+
+    mainWindow.show();
+    mainWindow.focus();
+  });
+
+  app.whenReady().then(async () => {
+    await loadSettings();
+    startModifierTracking();
+
+    try {
+      registerHotkey(settings.hotkey);
+    } catch (error) {
+      startupStatus = {
+        type: "warning",
+        message: error.message,
+      };
+    }
+
+    if (process.platform === "darwin" && app.dock) {
+      app.dock.setIcon(APP_ICON_PATH);
+    }
+
+    await createWindow();
+
+    app.on("activate", async () => {
+      if (!mainWindow) {
+        await createWindow();
+      }
+    });
+  }).catch((error) => {
+    console.error(error);
+    app.quit();
+  });
+
+  app.on("will-quit", () => {
+    stopModifierTracking();
+    globalShortcut.unregisterAll();
+  });
+
+  app.on("window-all-closed", () => {
+    if (process.platform !== "darwin") {
+      app.quit();
     }
   });
-}).catch((error) => {
-  console.error(error);
-  app.quit();
-});
-
-app.on("will-quit", () => {
-  stopModifierTracking();
-  globalShortcut.unregisterAll();
-});
-
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
-});
+}
