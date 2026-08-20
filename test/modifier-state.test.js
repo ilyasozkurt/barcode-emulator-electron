@@ -9,6 +9,8 @@ const {
 } = require("../src/modifier-state");
 const UiohookKey = require("../src/uiohook-keycodes");
 
+const untrackedKeycode = 30;
+
 const nutKeys = Object.freeze({
   LeftAlt: "LeftAlt",
   LeftControl: "LeftControl",
@@ -63,12 +65,12 @@ test("getRestoreKeycodes only keeps modifiers still physically held", () => {
 
 test("mapModifierKeycodesToNutKeys maps tracked modifiers to nut keys", () => {
   assert.deepEqual(
-    mapModifierKeycodesToNutKeys([UiohookKey.CtrlRight, UiohookKey.Shift], process.platform, nutKeys),
+    mapModifierKeycodesToNutKeys([UiohookKey.CtrlRight, UiohookKey.Shift], { nutKeys }),
     [nutKeys.RightControl, nutKeys.LeftShift],
   );
 });
 
 test("isTrackedModifierKeycode identifies tracked hotkey modifiers", () => {
   assert.equal(isTrackedModifierKeycode(UiohookKey.MetaRight), true);
-  assert.equal(isTrackedModifierKeycode(UiohookKey.A), false);
+  assert.equal(isTrackedModifierKeycode(untrackedKeycode), false);
 });

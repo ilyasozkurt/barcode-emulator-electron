@@ -1,6 +1,8 @@
 const { getEnabledHotkeyModifiers } = require("./shared");
 const UiohookKey = require("./uiohook-keycodes");
 
+let cachedNutKeys;
+
 const UIOHOOK_MODIFIER_KEYCODES = Object.freeze({
   control: [UiohookKey.Ctrl, UiohookKey.CtrlRight],
   alt: [UiohookKey.Alt, UiohookKey.AltRight],
@@ -9,7 +11,11 @@ const UIOHOOK_MODIFIER_KEYCODES = Object.freeze({
 });
 
 function getNutKeys() {
-  return require("@nut-tree-fork/nut-js").Key;
+  if (cachedNutKeys === undefined) {
+    cachedNutKeys = require("@nut-tree-fork/nut-js").Key;
+  }
+
+  return cachedNutKeys;
 }
 
 function getNutMetaKeys(nutKeys, platform = process.platform) {
@@ -69,12 +75,11 @@ function getRestoreKeycodes(plan, pressedKeycodes = new Set()) {
   return plan.restoreKeycodes.filter((keycode) => pressedKeycodes.has(keycode));
 }
 
-function mapModifierKeycodesToNutKeys(
-  keycodes,
+function mapModifierKeycodesToNutKeys(keycodes, {
   platform = process.platform,
-  nutKeys = getNutKeys(),
-) {
-  const nutKeyByUiohookKeycode = createNutKeyByUiohookKeycode(nutKeys, platform);
+  nutKeys,
+} = {}) {
+  const nutKeyByUiohookKeycode = createNutKeyByUiohookKeycode(nutKeys ?? getNutKeys(), platform);
 
   return uniq(keycodes.map((keycode) => nutKeyByUiohookKeycode.get(keycode)).filter(Boolean));
 }

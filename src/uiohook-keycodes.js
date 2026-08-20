@@ -1,5 +1,4 @@
 module.exports = Object.freeze({
-  A: 30,
   Ctrl: 29,
   CtrlRight: 3613,
   Alt: 56,
