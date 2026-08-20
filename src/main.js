@@ -42,20 +42,43 @@ if (!singleInstanceLockAcquired) {
 }
 
 const SETTINGS_FILE_NAME = "settings.json";
+const HISTORY_FILE_NAME = "history.json";
+const HISTORY_LIMIT = 25;
 const MAIN_WINDOW_MIN_HEIGHT = 150;
+const MAIN_WINDOW_WIDTH = 640;
 const APP_ICON_PATH = path.join(
   __dirname,
   process.platform === "win32" ? "icon.ico" : "icon.png",
 );
 
+let history = [];
+
 function getSettingsFilePath() {
   return path.join(app.getPath("userData"), SETTINGS_FILE_NAME);
+}
+
+function getHistoryFilePath() {
+  return path.join(app.getPath("userData"), HISTORY_FILE_NAME);
+}
+
+function applyStartOnBoot(enabled) {
+  if (typeof app.setLoginItemSettings !== "function") {
+    return;
+  }
+
+  app.setLoginItemSettings({ openAtLogin: Boolean(enabled) });
 }
 
 async function loadSettings() {
   try {
     const saved = await fs.readFile(getSettingsFilePath(), "utf8");
-    settings = mergeSettings(DEFAULT_SETTINGS, JSON.parse(saved));
+    const parsedSettings = JSON.parse(saved);
+
+    if (parsedSettings.suffixKey === undefined && parsedSettings.sendEnter === false) {
+      parsedSettings.suffixKey = "none";
+    }
+
+    settings = mergeSettings(DEFAULT_SETTINGS, parsedSettings);
   } catch (error) {
     if (error && error.code !== "ENOENT") {
       throw error;
@@ -65,12 +88,56 @@ async function loadSettings() {
     await saveSettings();
   }
 
+  applyStartOnBoot(settings.startOnBoot);
+
   return settings;
 }
 
 async function saveSettings() {
   await fs.mkdir(app.getPath("userData"), { recursive: true });
   await fs.writeFile(getSettingsFilePath(), `${JSON.stringify(settings, null, 2)}\n`, "utf8");
+}
+
+async function loadHistory() {
+  try {
+    const saved = await fs.readFile(getHistoryFilePath(), "utf8");
+    const parsed = JSON.parse(saved);
+    history = Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    if (error && error.code !== "ENOENT") {
+      throw error;
+    }
+
+    history = [];
+  }
+
+  return history;
+}
+
+async function saveHistory() {
+  await fs.mkdir(app.getPath("userData"), { recursive: true });
+  await fs.writeFile(getHistoryFilePath(), `${JSON.stringify(history, null, 2)}\n`, "utf8");
+}
+
+function pushHistoryUpdate() {
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send("history:updated", history);
+  }
+}
+
+async function recordHistoryEntry(value) {
+  history = [
+    { value, timestamp: Date.now() },
+    ...history.filter((entry) => entry.value !== value),
+  ].slice(0, HISTORY_LIMIT);
+
+  pushHistoryUpdate();
+
+  try {
+    await saveHistory();
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 function getRendererState() {
@@ -188,7 +255,7 @@ async function emulateBarcodeInput() {
     keyboard.config.autoDelayMs = settings.delayMs;
     await keyboard.type(normalizedValue);
 
-    if (settings.sendEnter) {
+    if (settings.suffixKey !== "none") {
       await keyboard.type(settings.suffixKey === "tab" ? Key.Tab : Key.Enter);
     }
   } finally {
@@ -202,6 +269,8 @@ async function emulateBarcodeInput() {
       : "Barcode emulated, but unsupported characters were replaced with ?.",
     notify: true,
   });
+
+  await recordHistoryEntry(normalizedValue);
 }
 
 function hotkeyCallback() {
@@ -241,12 +310,14 @@ function registerHotkey(spec) {
   currentAccelerator = accelerator;
 }
 
+let showMainWindowOnce = () => {};
+
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 400,
+    width: MAIN_WINDOW_WIDTH,
     height: MAIN_WINDOW_MIN_HEIGHT,
-    minWidth: 320,
-    maxWidth: 400,
+    minWidth: MAIN_WINDOW_WIDTH,
+    maxWidth: MAIN_WINDOW_WIDTH,
     minHeight: MAIN_WINDOW_MIN_HEIGHT,
     resizable: false,
     show: false,
@@ -262,16 +333,30 @@ function createWindow() {
     },
   });
 
-  mainWindow.once("ready-to-show", () => {
+  let windowShown = false;
+
+  const showWindowOnce = () => {
+    if (windowShown || mainWindow.isDestroyed()) {
+      return;
+    }
+    windowShown = true;
     mainWindow.show();
     if (startupStatus) {
       pushStatus(startupStatus);
       startupStatus = null;
     }
+  };
+
+  showMainWindowOnce = showWindowOnce;
+
+  mainWindow.once("ready-to-show", () => {
+    // Fallback in case the renderer never reports its content height (e.g. bridge unavailable).
+    setTimeout(showWindowOnce, 300);
   });
 
   mainWindow.on("closed", () => {
     mainWindow = null;
+    showMainWindowOnce = () => {};
   });
 
   return mainWindow.loadFile(path.join(__dirname, "..", "dist-renderer", "index.html"));
@@ -308,6 +393,11 @@ ipcMain.handle("settings:get", async () => {
 
 ipcMain.handle("settings:update", async (_event, partialSettings) => {
   settings = mergeSettings(settings, partialSettings);
+
+  if (partialSettings && partialSettings.startOnBoot !== undefined) {
+    applyStartOnBoot(settings.startOnBoot);
+  }
+
   await saveSettings();
   return getRendererState();
 });
@@ -315,10 +405,30 @@ ipcMain.handle("settings:update", async (_event, partialSettings) => {
 ipcMain.on("window:content-height", (event, contentHeight) => {
   const window = BrowserWindow.fromWebContents(event.sender);
   resizeWindowToContent(window, Number(contentHeight) || 0);
+  showMainWindowOnce();
 });
 
 ipcMain.on("barcode-value:sync", (_event, barcodeValue) => {
   settings = mergeSettings(settings, { barcodeValue: String(barcodeValue ?? "") });
+});
+
+ipcMain.handle("history:get", async () => history);
+
+ipcMain.handle("history:clear", async () => {
+  history = [];
+  await saveHistory();
+  pushHistoryUpdate();
+  return history;
+});
+
+ipcMain.handle("app:get-version", () => app.getVersion());
+
+ipcMain.handle("app:open-external", (_event, url) => {
+  if (typeof url === "string" && /^https:\/\//.test(url)) {
+    return shell.openExternal(url);
+  }
+
+  return undefined;
 });
 
 ipcMain.handle("hotkey:update", async (_event, nextHotkey) => {
@@ -375,6 +485,7 @@ if (singleInstanceLockAcquired) {
 
   app.whenReady().then(async () => {
     await loadSettings();
+    await loadHistory();
     startModifierTracking();
 
     try {

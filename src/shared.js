@@ -39,13 +39,14 @@ const HOTKEY_KEYS = Object.freeze([
 
 const SUPPORTED_BARCODE_CHAR = /^[0-9A-Za-z`~!@#$%^&*()_+\-=\[\]{}\\|;:'",.<>/?]$/;
 
-const SUFFIX_KEYS = Object.freeze(["enter", "tab"]);
+const SUFFIX_KEYS = Object.freeze(["none", "enter", "tab"]);
 
 const DEFAULT_SETTINGS = Object.freeze({
   barcodeValue: "test",
   delayMs: 10,
   sendEnter: false,
   suffixKey: "enter",
+  startOnBoot: false,
   hotkey: {
     key: "A",
     modifiers: {
@@ -128,6 +129,9 @@ function mergeSettings(baseSettings, nextValues = {}) {
     suffixKey: nextValues.suffixKey === undefined
       ? normalizeSuffixKey(baseSettings.suffixKey)
       : normalizeSuffixKey(nextValues.suffixKey),
+    startOnBoot: nextValues.startOnBoot === undefined
+      ? Boolean(baseSettings.startOnBoot)
+      : Boolean(nextValues.startOnBoot),
     hotkey: nextValues.hotkey === undefined
       ? normalizeHotkeySpec(baseSettings.hotkey)
       : normalizeHotkeySpec(nextValues.hotkey),

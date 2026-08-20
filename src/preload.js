@@ -49,6 +49,7 @@ function normalizeBarcodeValue(value) {
 
 contextBridge.exposeInMainWorld("barcodeEmulator", {
   hotkeyKeys: HOTKEY_KEYS,
+  platform: process.platform,
   getSettings: () => ipcRenderer.invoke("settings:get"),
   emulateBarcode: () => ipcRenderer.invoke("barcode:emulate"),
   normalizeBarcodeValue,
@@ -64,4 +65,16 @@ contextBridge.exposeInMainWorld("barcodeEmulator", {
   setHotkey: (hotkey) => ipcRenderer.invoke("hotkey:update", hotkey),
   syncBarcodeValue: (barcodeValue) => ipcRenderer.send("barcode-value:sync", barcodeValue),
   updateSettings: (partialSettings) => ipcRenderer.invoke("settings:update", partialSettings),
+  getHistory: () => ipcRenderer.invoke("history:get"),
+  clearHistory: () => ipcRenderer.invoke("history:clear"),
+  onHistoryUpdated: (callback) => {
+    const listener = (_event, historyEntries) => callback(historyEntries);
+    ipcRenderer.on("history:updated", listener);
+
+    return () => {
+      ipcRenderer.removeListener("history:updated", listener);
+    };
+  },
+  getAppVersion: () => ipcRenderer.invoke("app:get-version"),
+  openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
 });

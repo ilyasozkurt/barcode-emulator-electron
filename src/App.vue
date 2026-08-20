@@ -1,94 +1,227 @@
 <template>
   <main ref="pageRoot" class="bg-white">
-    <section class="grid gap-3 p-4">
-      <div class="mb-2 grid gap-1">
-        <h1 class="m-0 text-[1.15rem] font-bold text-slate-800">Barcode reader emulator</h1>
-        <div class="flex items-center gap-2">
-          <span class="text-[0.95rem] font-medium text-slate-700">({{ hotkeyLabel }})</span>
+    <div>
+      <header class="flex items-center gap-2 border-b border-slate-200 px-4 py-3">
+        <img :src="appIconUrl" alt="" class="h-7 w-7 shrink-0 rounded-md" aria-hidden="true" />
+        <h1 class="m-0 truncate text-[1.05rem] font-bold text-slate-800">Barcode Reader Emulator</h1>
+      </header>
+
+      <div class="flex items-stretch">
+        <aside class="flex w-32 shrink-0 flex-col gap-1 border-r border-slate-200 bg-white p-2.5">
           <button
-            id="editHotkeyButton"
+            v-for="item in navItems"
+            :id="`nav-${item.id}`"
+            :key="item.id"
             type="button"
-            class="inline-flex cursor-pointer h-7 min-w-7 items-center justify-center rounded-full border border-slate-300 px-2 text-[0.78rem] font-medium text-slate-600 transition hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
-            :disabled="!bridgeAvailable || !controlsEnabled || hotkeySaveBusy"
-            @click="toggleHotkeyRecording"
+            class="flex cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-left text-[0.8rem] font-medium transition"
+            :class="activeSection === item.id
+              ? 'bg-blue-50 text-blue-600'
+              : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'"
+            @click="activeSection = item.id"
           >
-            <span v-if="hotkeyRecording">Cancel</span>
-            <i v-else class="pi pi-pencil" aria-hidden="true" />
+            <i :class="['pi', item.icon, 'text-[0.85rem]']" aria-hidden="true" />
+            <span>{{ item.label }}</span>
           </button>
+        </aside>
+
+        <div class="flex min-w-0 flex-1 flex-col">
+          <div
+            ref="contentPanel"
+            class="min-w-0 overflow-y-auto p-4"
+            :class="lockedContentHeight ? 'shrink-0 grow-0' : 'flex-1'"
+            :style="lockedContentHeight ? { height: `${lockedContentHeight}px` } : undefined"
+          >
+          <section v-if="activeSection === 'emulator'" aria-label="Barcode reader emulator controls" class="grid gap-3">
+            <div class="grid gap-1.5">
+              <span class="text-[0.8rem] font-semibold text-slate-500">Input</span>
+              <Textarea
+                id="barcodeValue"
+                v-model="barcodeValue"
+                :rows="4"
+                placeholder="Type a barcode value..."
+                :disabled="!controlsEnabled"
+                class="w-full rounded-[1.4rem] border border-[#d6d6d6] bg-white px-4 py-4 text-[0.95rem] shadow-none"
+                @update:modelValue="onBarcodeInput"
+              />
+              <div class="flex items-center gap-1.5 text-[0.82rem]" :class="statusColorClass">
+                <i :class="['pi', statusIcon]" aria-hidden="true" />
+                <span>{{ statusText }}</span>
+              </div>
+            </div>
+
+            <div class="flex items-end gap-2.5">
+              <div class="grid gap-1">
+                <span class="text-[0.75rem] font-semibold text-slate-500">Suffix</span>
+                <Select
+                  id="suffixKeySelect"
+                  v-model="suffixKey"
+                  :options="suffixKeyOptions"
+                  option-label="label"
+                  option-value="value"
+                  size="small"
+                  overlay-class="suffix-key-select-overlay"
+                  class="!w-28 [&_.p-select-label]:!py-1.5 [&_.p-select-label]:!text-[0.8rem]"
+                  :disabled="!bridgeAvailable || !controlsEnabled"
+                  @update:model-value="handleSuffixKeyUpdate"
+                />
+              </div>
+
+              <div class="grid gap-1">
+                <span class="text-[0.75rem] font-semibold text-slate-500">Delay</span>
+                <div class="flex items-center gap-1.5 rounded-lg border border-slate-300 px-2.5 py-1.5">
+                  <input
+                    id="delayInput"
+                    type="number"
+                    min="10"
+                    max="100"
+                    step="5"
+                    :value="delayMs"
+                    class="w-10 border-0 p-0 text-[0.85rem] text-slate-700 focus:outline-none"
+                    :disabled="!bridgeAvailable || !controlsEnabled || hotkeyRecording"
+                    @input="handleDelayInput(Number($event.target.value))"
+                  />
+                  <span class="text-[0.72rem] text-slate-400">ms</span>
+                </div>
+              </div>
+
+              <Button
+                id="sendButton"
+                class="ml-auto w-1/2"
+                :loading="sendBusy"
+                :disabled="!bridgeAvailable || !controlsEnabled || sendBusy || hotkeyRecording || isTyping || !barcodeValue"
+                @click="sendBarcode"
+              >
+                <i class="pi pi-play" aria-hidden="true" />
+                Emulate
+              </Button>
+            </div>
+
+            <p class="m-0 text-[0.72rem] text-slate-400">Hotkey: {{ hotkeyLabel }}</p>
+          </section>
+
+          <section v-else-if="activeSection === 'settings'" aria-label="Settings" class="grid gap-5">
+            <div class="grid gap-1.5">
+              <span class="text-[0.8rem] font-semibold text-slate-500">Global hotkey</span>
+              <div class="flex items-center gap-2">
+                <span class="text-[0.95rem] font-medium text-slate-700">{{ hotkeyLabel }}</span>
+                <button
+                  id="editHotkeyButton"
+                  type="button"
+                  class="inline-flex cursor-pointer h-7 min-w-7 items-center justify-center rounded-full border border-slate-300 px-2 text-[0.78rem] font-medium text-slate-600 transition hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                  :disabled="!bridgeAvailable || !controlsEnabled || hotkeySaveBusy"
+                  @click="toggleHotkeyRecording"
+                >
+                  <span v-if="hotkeyRecording">Cancel</span>
+                  <i v-else class="pi pi-pencil" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-[0.8rem] font-semibold text-slate-500">Start on boot</span>
+              <ToggleSwitch
+                id="startOnBootToggle"
+                v-model="startOnBoot"
+                :disabled="!bridgeAvailable || !controlsEnabled"
+                @update:model-value="handleStartOnBootUpdate"
+              />
+            </div>
+          </section>
+
+          <section v-else-if="activeSection === 'history'" aria-label="History" class="grid gap-3">
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-[0.8rem] font-semibold text-slate-500">Recently emulated</span>
+              <button
+                id="clearHistoryButton"
+                type="button"
+                class="cursor-pointer text-[0.78rem] font-medium text-slate-500 transition hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="!bridgeAvailable || historyEntries.length === 0"
+                @click="clearHistory"
+              >
+                Clear
+              </button>
+            </div>
+
+            <p v-if="historyEntries.length === 0" class="m-0 text-[0.85rem] text-slate-500">
+              Nothing emulated yet. Values you send will show up here.
+            </p>
+
+            <ul v-else class="m-0 grid list-none gap-1.5 p-0">
+              <li
+                v-for="entry in historyEntries"
+                :key="entry.timestamp"
+                class="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2"
+              >
+                <div class="min-w-0">
+                  <div class="truncate font-mono text-[0.85rem] text-slate-800">{{ entry.value }}</div>
+                  <div class="text-[0.72rem] text-slate-500">{{ formatHistoryTimestamp(entry.timestamp) }}</div>
+                </div>
+                <button
+                  type="button"
+                  severity="primary"
+                  class="shrink-0 cursor-pointer rounded-full border border-slate-300 px-2.5 py-1 text-[0.74rem] font-medium text-slate-600 transition hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                  :disabled="!bridgeAvailable || !controlsEnabled"
+                  @click="reuseHistoryEntry(entry.value)"
+                >
+                  Use
+                </button>
+              </li>
+            </ul>
+          </section>
+
+          <section v-else aria-label="About" class="grid gap-3">
+            <div class="grid gap-1">
+              <span class="text-[0.95rem] font-semibold text-slate-800">Barcode Reader Emulator</span>
+              <span class="text-[0.8rem] text-slate-500">Version {{ appVersion }}</span>
+            </div>
+            <p class="m-0 text-[0.85rem] text-slate-600">
+              Simulates a barcode scanner by typing values into the currently focused application using
+              a configurable global hotkey.
+            </p>
+            <div class="grid gap-1.5">
+              <button
+                type="button"
+                class="cursor-pointer text-left text-[0.82rem] font-medium text-slate-700 underline decoration-slate-300 underline-offset-2 hover:text-slate-900"
+                @click="openExternalLink('https://barcodescanneremulator.dev')"
+              >
+                Website
+              </button>
+              <button
+                type="button"
+                class="cursor-pointer text-left text-[0.82rem] font-medium text-slate-700 underline decoration-slate-300 underline-offset-2 hover:text-slate-900"
+                @click="openExternalLink('https://github.com/ilyasozkurt/barcode-emulator-electron')"
+              >
+                GitHub repository
+              </button>
+              <button
+                type="button"
+                class="cursor-pointer text-left text-[0.82rem] font-medium text-slate-700 underline decoration-slate-300 underline-offset-2 hover:text-slate-900"
+                @click="openExternalLink('https://github.com/ilyasozkurt/barcode-emulator-electron/issues/new')"
+              >
+                Report an issue
+              </button>
+            </div>
+            <span class="text-[0.75rem] text-slate-400">MIT License</span>
+          </section>
+          </div>
+
+          <footer class="flex shrink-0 items-center gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3 text-[0.8rem]">
+            <span class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+              <i class="pi pi-key text-slate-400" aria-hidden="true" />
+              <span class="text-slate-500">Keyboard wedge:</span>
+              <span class="font-semibold" :class="bridgeAvailable ? 'text-emerald-600' : 'text-slate-400'">
+                {{ bridgeAvailable ? "Enabled" : "Unavailable" }}
+              </span>
+            </span>
+            <span class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+              <i class="pi pi-desktop text-slate-400" aria-hidden="true" />
+              <span class="text-slate-500">Platform:</span>
+              <span class="font-semibold text-blue-600">{{ platformLabel }}</span>
+            </span>
+          </footer>
         </div>
       </div>
-
-      <section aria-label="Barcode reader emulator controls" class="relative">
-        <Textarea
-          id="barcodeValue"
-          v-model="barcodeValue"
-          :rows="10"
-          placeholder="Type a barcode value..."
-          :disabled="!controlsEnabled"
-          class="min-h-60 w-full rounded-[1.9rem] border border-[#d6d6d6] bg-white px-4 py-5 text-[0.95rem] shadow-none"
-          @update:modelValue="onBarcodeInput"
-        />
-      </section>
-
-      <section class="flex items-center justify-between gap-3">
-        <label
-          class="flex cursor-pointer items-center gap-2 text-[0.88rem] text-slate-700"
-          :class="{ 'opacity-50': !bridgeAvailable || !controlsEnabled }"
-        >
-          <input
-            id="sendEnterInput"
-            :checked="sendEnter"
-            type="checkbox"
-            class="h-4 w-4 accent-slate-900"
-            :disabled="!bridgeAvailable || !controlsEnabled"
-            @change="handleSendEnterUpdate($event.target.checked)"
-          />
-          <span class="flex items-center gap-1">
-            Send
-            <Select
-              id="suffixKeySelect"
-              v-model="suffixKey"
-              :options="suffixKeyOptions"
-              option-label="label"
-              option-value="value"
-              size="small"
-              overlay-class="suffix-key-select-overlay"
-              class="!min-w-0 [&_.p-select-label]:!py-0 [&_.p-select-label]:!pr-4 [&_.p-select-label]:!pl-1.5 [&_.p-select-label]:!text-[0.72rem] [&_.p-select-label]:!font-semibold [&_.p-select-dropdown]:!w-3.5 [&_.p-select-dropdown_svg]:!h-2.5 [&_.p-select-dropdown_svg]:!w-2.5"
-              :disabled="!bridgeAvailable || !controlsEnabled"
-              @click.stop
-              @update:model-value="handleSuffixKeyUpdate"
-            />
-            at the end
-          </span>
-        </label>
-
-        <button
-          id="speedButton"
-          type="button"
-          class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[0.76rem] font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
-          :disabled="!bridgeAvailable || !controlsEnabled || hotkeyRecording"
-          @click="openSpeedDrawer"
-        >
-          <i class="pi pi-pencil text-[0.72rem]" aria-hidden="true" />
-          <span>Speed</span>
-          <span>{{ delayMs }} ms</span>
-        </button>
-      </section>
-
-      <Button
-        id="sendButton"
-        fluid
-        size="large"
-        :loading="sendBusy"
-        :disabled="!bridgeAvailable || !controlsEnabled || sendBusy || hotkeyRecording"
-        @click="sendBarcode"
-      >
-        <div class="grid gap-0">
-          <div>Emulate</div>
-          <div class="text-sm">({{ hotkeyLabel }})</div>
-        </div>
-      </Button>
-    </section>
+    </div>
 
     <Drawer
       v-model:visible="hotkeyRecording"
@@ -111,54 +244,34 @@
         <p class="m-0 text-[0.82rem] text-slate-500">{{ hotkeyRecordingMessage }}</p>
       </section>
     </Drawer>
-
-    <Drawer
-      v-model:visible="speedDrawerVisible"
-      position="bottom"
-      header="Speed"
-      class="!h-auto !max-h-[50vh] rounded-t-[24px]"
-      pt:header:class="!px-5 !py-4"
-      pt:title:class="!text-base !font-semibold"
-    >
-      <section class="grid gap-4 pb-2">
-        <div class="flex items-center justify-between gap-3 text-[0.92rem] text-slate-700">
-          <span>Barcode emulating speed</span>
-          <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[0.78rem] font-medium text-slate-700">
-            {{ describeDelay(delayMs) }}
-          </span>
-        </div>
-        <div class="grid gap-2">
-          <input
-            id="speedInput"
-            :value="delayMs"
-            type="range"
-            min="10"
-            max="100"
-            step="5"
-            class="h-2 w-full cursor-pointer accent-slate-900"
-            :disabled="!bridgeAvailable || !controlsEnabled || hotkeyRecording"
-            @input="handleDelayInput(Number($event.target.value))"
-          />
-          <div class="flex justify-between text-[0.75rem] text-slate-500">
-            <span>Fast</span>
-            <span>Slow</span>
-          </div>
-        </div>
-      </section>
-    </Drawer>
   </main>
 </template>
 
 <script setup>
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import Button from "primevue/button";
 import Drawer from "primevue/drawer";
 import Select from "primevue/select";
 import Textarea from "primevue/textarea";
+import ToggleSwitch from "primevue/toggleswitch";
+import appIconUrl from "./icon.png";
 
 const api = window.barcodeEmulator;
 
+const PLATFORM_LABELS = {
+  win32: "Windows",
+  darwin: "macOS",
+  linux: "Linux",
+};
+
 const MODIFIER_ONLY_KEYS = new Set(["Alt", "AltGraph", "Control", "Meta", "Shift"]);
+
+const NAV_ITEMS = [
+  { id: "emulator", label: "Emulator", icon: "pi-barcode" },
+  { id: "settings", label: "Settings", icon: "pi-cog" },
+  { id: "history", label: "History", icon: "pi-history" },
+  { id: "about", label: "About", icon: "pi-info-circle" },
+];
 
 const bridgeAvailable = Boolean(
   api
@@ -171,6 +284,8 @@ const bridgeAvailable = Boolean(
     && typeof api.onStatus === "function"
     && typeof api.normalizeBarcodeValue === "function",
 );
+
+const platformLabel = computed(() => PLATFORM_LABELS[api?.platform] ?? "Unknown");
 
 function cloneHotkey(hotkey) {
   return {
@@ -209,14 +324,45 @@ const controlsEnabled = ref(false);
 const barcodeValue = ref("");
 const hotkeyLabel = ref("Loading hotkey...");
 const delayMs = ref(30);
-const sendEnter = ref(false);
 const suffixKey = ref("enter");
 const suffixKeyOptions = [
+  { label: "NONE", value: "none" },
   { label: "ENTER", value: "enter" },
   { label: "TAB", value: "tab" },
 ];
+const startOnBoot = ref(false);
+const isTyping = ref(false);
 const statusMessage = ref("");
 const statusType = ref("idle");
+const STATUS_PRESENTATION = {
+  idle: { icon: "pi-check-circle", colorClass: "text-emerald-600" },
+  success: { icon: "pi-check-circle", colorClass: "text-emerald-600" },
+  warning: { icon: "pi-exclamation-triangle", colorClass: "text-amber-600" },
+  error: { icon: "pi-times-circle", colorClass: "text-red-600" },
+  info: { icon: "pi-info-circle", colorClass: "text-slate-500" },
+  typing: { icon: "pi-spinner-dotted pi-spin", colorClass: "text-slate-500" },
+  empty: { icon: "pi-info-circle", colorClass: "text-slate-400" },
+};
+const statusText = computed(() => {
+  if (isTyping.value) {
+    return "Input is being changed...";
+  }
+  if (!barcodeValue.value) {
+    return "Type a barcode value";
+  }
+  return statusMessage.value || "Ready to emulate";
+});
+const statusPresentationKey = computed(() => {
+  if (isTyping.value) {
+    return "typing";
+  }
+  if (!barcodeValue.value) {
+    return "empty";
+  }
+  return statusType.value;
+});
+const statusIcon = computed(() => (STATUS_PRESENTATION[statusPresentationKey.value] ?? STATUS_PRESENTATION.info).icon);
+const statusColorClass = computed(() => (STATUS_PRESENTATION[statusPresentationKey.value] ?? STATUS_PRESENTATION.info).colorClass);
 const draftHotkey = ref(
   cloneHotkey({
     key: "A",
@@ -229,12 +375,17 @@ const hotkeyRecording = ref(false);
 const hotkeySaveBusy = ref(false);
 const hotkeyRecordingMessage = ref("Press the new shortcut now. Use at least one modifier and one letter or number. Press Esc to cancel.");
 const pageRoot = ref(null);
-const speedDrawerVisible = ref(false);
+const contentPanel = ref(null);
+const lockedContentHeight = ref(null);
+const activeSection = ref("emulator");
+const navItems = NAV_ITEMS;
+const historyEntries = ref([]);
+const appVersion = ref("");
 
 let valueSaveTimer = null;
 let delaySaveTimer = null;
 let unsubscribeStatus = null;
-let resizeFrame = null;
+let unsubscribeHistory = null;
 
 function setStatus(message, type = "info") {
   statusMessage.value = message;
@@ -251,8 +402,8 @@ function applySettingsState(settingsState) {
   barcodeValue.value = settingsState.settings.barcodeValue;
   hotkeyLabel.value = settingsState.hotkeyLabel;
   delayMs.value = settingsState.settings.delayMs;
-  sendEnter.value = settingsState.settings.sendEnter;
   suffixKey.value = settingsState.settings.suffixKey;
+  startOnBoot.value = settingsState.settings.startOnBoot;
   draftHotkey.value = cloneHotkey(settingsState.settings.hotkey);
   controlsEnabled.value = true;
 }
@@ -265,27 +416,16 @@ async function persistSettings(partialSettings) {
 
 function queueBarcodeValueSave(value) {
   clearTimeout(valueSaveTimer);
+  isTyping.value = true;
   valueSaveTimer = setTimeout(async () => {
     try {
       await persistSettings({ barcodeValue: value });
     } catch (error) {
       setStatus(error.message, "error");
+    } finally {
+      isTyping.value = false;
     }
   }, 150);
-}
-
-function describeDelay(value) {
-  const roundedValue = Number(value);
-
-  if (roundedValue <= 25) {
-    return `Fast (${roundedValue} ms)`;
-  }
-
-  if (roundedValue <= 60) {
-    return `Normal (${roundedValue} ms)`;
-  }
-
-  return `Slow (${roundedValue} ms)`;
 }
 
 function onBarcodeInput(value) {
@@ -324,11 +464,45 @@ function handleDelayInput(value) {
   queueDelaySave(value);
 }
 
-function openSpeedDrawer() {
-  speedDrawerVisible.value = true;
+function reuseHistoryEntry(value) {
+  if (!bridgeAvailable) {
+    return;
+  }
+
+  barcodeValue.value = value;
+  api.syncBarcodeValue(value);
+  queueBarcodeValueSave(value);
+  activeSection.value = "emulator";
+}
+
+async function clearHistory() {
+  if (!bridgeAvailable || typeof api.clearHistory !== "function") {
+    return;
+  }
+
+  try {
+    historyEntries.value = await api.clearHistory();
+  } catch (error) {
+    setStatus(error.message, "error");
+  }
+}
+
+function formatHistoryTimestamp(timestamp) {
+  const date = new Date(timestamp);
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleString();
+}
+
+function openExternalLink(url) {
+  if (bridgeAvailable && typeof api.openExternal === "function") {
+    api.openExternal(url);
+  }
 }
 
 async function sendBarcode() {
+  if (isTyping.value || !barcodeValue.value) {
+    return;
+  }
+
   sendBusy.value = true;
 
   try {
@@ -354,23 +528,6 @@ async function saveHotkey(nextHotkey = draftHotkey.value) {
   }
 }
 
-async function onSendEnterChange() {
-  if (!currentSettings.value || sendEnter.value === currentSettings.value.sendEnter) {
-    return;
-  }
-
-  try {
-    await persistSettings({ sendEnter: sendEnter.value });
-  } catch (error) {
-    setStatus(error.message, "error");
-  }
-}
-
-function handleSendEnterUpdate(value) {
-  sendEnter.value = value;
-  onSendEnterChange();
-}
-
 async function onSuffixKeyChange() {
   if (!currentSettings.value || suffixKey.value === currentSettings.value.suffixKey) {
     return;
@@ -386,6 +543,20 @@ async function onSuffixKeyChange() {
 function handleSuffixKeyUpdate(value) {
   suffixKey.value = value;
   onSuffixKeyChange();
+}
+
+async function handleStartOnBootUpdate(value) {
+  startOnBoot.value = value;
+
+  if (!currentSettings.value || value === currentSettings.value.startOnBoot) {
+    return;
+  }
+
+  try {
+    await persistSettings({ startOnBoot: value });
+  } catch (error) {
+    setStatus(error.message, "error");
+  }
 }
 
 function toggleHotkeyRecording() {
@@ -452,6 +623,28 @@ async function init() {
     setStatus(message, type);
   });
 
+  if (typeof api.onHistoryUpdated === "function") {
+    unsubscribeHistory = api.onHistoryUpdated((entries) => {
+      historyEntries.value = Array.isArray(entries) ? entries : [];
+    });
+  }
+
+  if (typeof api.getHistory === "function") {
+    try {
+      historyEntries.value = await api.getHistory();
+    } catch (error) {
+      setStatus(error.message, "error");
+    }
+  }
+
+  if (typeof api.getAppVersion === "function") {
+    try {
+      appVersion.value = await api.getAppVersion();
+    } catch {
+      appVersion.value = "";
+    }
+  }
+
   try {
     const settingsState = await api.getSettings();
     applySettingsState(settingsState);
@@ -479,38 +672,31 @@ function reportContentHeight() {
   api.reportContentHeight(measuredHeight);
 }
 
-function scheduleContentHeightReport() {
-  if (resizeFrame !== null) {
-    cancelAnimationFrame(resizeFrame);
+async function lockContentHeight() {
+  await nextTick();
+
+  const panelElement = contentPanel.value;
+  if (!panelElement) {
+    return;
   }
 
-  resizeFrame = requestAnimationFrame(() => {
-    resizeFrame = null;
-    reportContentHeight();
-  });
+  lockedContentHeight.value = Math.ceil(panelElement.getBoundingClientRect().height);
+
+  await nextTick();
+  reportContentHeight();
 }
 
-onMounted(() => {
-  init();
+onMounted(async () => {
+  await init();
   window.addEventListener("keydown", handleHotkeyRecordingKeydown, true);
-  scheduleContentHeightReport();
+  await lockContentHeight();
 });
 
 onBeforeUnmount(() => {
   unsubscribeStatus?.();
+  unsubscribeHistory?.();
   clearTimeout(valueSaveTimer);
   clearTimeout(delaySaveTimer);
   window.removeEventListener("keydown", handleHotkeyRecordingKeydown, true);
-  if (resizeFrame !== null) {
-    cancelAnimationFrame(resizeFrame);
-  }
 });
-
-watch(
-  [barcodeValue, hotkeyLabel, delayMs, sendEnter, suffixKey, hotkeyRecording, hotkeyRecordingMessage],
-  async () => {
-    await nextTick();
-    scheduleContentHeightReport();
-  },
-);
 </script>
