@@ -6,6 +6,32 @@
         <h1 class="m-0 truncate text-[1.05rem] font-bold text-slate-800">Barcode Reader Emulator</h1>
       </header>
 
+      <div
+        v-if="updateInfo && !updateInfo.skipped"
+        id="updateAvailableBanner"
+        class="flex items-center gap-3 border-b border-amber-300 bg-amber-50 px-4 py-2.5"
+      >
+        <i class="pi pi-exclamation-triangle text-[1.1rem] text-amber-600" aria-hidden="true" />
+        <span class="text-[0.85rem] font-semibold text-amber-800">
+          A new version (v{{ updateInfo.latestVersion }}) is available!
+        </span>
+        <button
+          id="skipUpdateVersionButton"
+          type="button"
+          class="ml-auto shrink-0 cursor-pointer text-[0.78rem] font-medium text-amber-700 underline decoration-amber-400 underline-offset-2 hover:text-amber-900"
+          @click="skipUpdateVersion"
+        >
+          Skip this version
+        </button>
+        <button
+          type="button"
+          class="shrink-0 cursor-pointer rounded-full bg-amber-500 px-3.5 py-1.5 text-[0.78rem] font-semibold text-white transition hover:bg-amber-600"
+          @click="openExternalLink(updateInfo.url)"
+        >
+          Download update
+        </button>
+      </div>
+
       <div class="flex items-stretch">
         <aside class="flex w-32 shrink-0 flex-col gap-1 border-r border-slate-200 bg-white p-2.5">
           <button
@@ -213,9 +239,41 @@
 
           <section v-else aria-label="About" class="grid gap-3">
             <div class="grid gap-1">
-              <span class="text-[0.95rem] font-semibold text-slate-800">Barcode Reader Emulator</span>
+              <span class="text-[0.95rem] font-semibold text-slate-800">About</span>
               <span class="text-[0.8rem] text-slate-500">Version {{ appVersion }}</span>
             </div>
+
+            <div
+              v-if="updateInfo"
+              id="aboutUpdateAvailable"
+              class="grid gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5"
+            >
+              <div class="flex items-center gap-2">
+                <i class="pi pi-exclamation-triangle text-[1rem] text-amber-600" aria-hidden="true" />
+                <span class="text-[0.82rem] font-semibold text-amber-800">
+                  Update available: v{{ updateInfo.latestVersion }}
+                </span>
+              </div>
+              <div class="flex items-center gap-3">
+                <button
+                  type="button"
+                  class="cursor-pointer rounded-full bg-amber-500 px-3 py-1.5 text-[0.76rem] font-semibold text-white transition hover:bg-amber-600"
+                  @click="openExternalLink(updateInfo.url)"
+                >
+                  Download update
+                </button>
+                <button
+                  v-if="!updateInfo.skipped"
+                  type="button"
+                  class="cursor-pointer text-[0.76rem] font-medium text-amber-700 underline decoration-amber-400 underline-offset-2 hover:text-amber-900"
+                  @click="skipUpdateVersion"
+                >
+                  Skip this version
+                </button>
+              </div>
+            </div>
+            <span v-else-if="updateCheckComplete" class="text-[0.78rem] text-slate-400">You're on the latest version.</span>
+
             <p class="m-0 text-[0.85rem] text-slate-600">
               Simulates a barcode scanner by typing values into the currently focused application using
               a configurable global hotkey.
@@ -492,6 +550,8 @@ const activeSection = ref("emulator");
 const navItems = NAV_ITEMS;
 const historyEntries = ref([]);
 const appVersion = ref("");
+const updateInfo = ref(null);
+const updateCheckComplete = ref(false);
 const clearHistoryConfirmVisible = ref(false);
 const clearHistoryBusy = ref(false);
 
@@ -626,6 +686,23 @@ function formatHistoryTimestamp(timestamp) {
 function openExternalLink(url) {
   if (bridgeAvailable && typeof api.openExternal === "function") {
     api.openExternal(url);
+  }
+}
+
+async function skipUpdateVersion() {
+  if (!updateInfo.value) {
+    return;
+  }
+
+  const skippedVersion = updateInfo.value.latestVersion;
+  updateInfo.value = { ...updateInfo.value, skipped: true };
+
+  if (bridgeAvailable && typeof api.skipUpdateVersion === "function") {
+    try {
+      await api.skipUpdateVersion(skippedVersion);
+    } catch (error) {
+      setStatus(error.message, "error");
+    }
   }
 }
 
@@ -866,6 +943,16 @@ async function init() {
       appVersion.value = await api.getAppVersion();
     } catch {
       appVersion.value = "";
+    }
+  }
+
+  if (typeof api.checkForUpdate === "function") {
+    try {
+      updateInfo.value = await api.checkForUpdate();
+    } catch {
+      updateInfo.value = null;
+    } finally {
+      updateCheckComplete.value = true;
     }
   }
 

@@ -55,6 +55,7 @@ const DEFAULT_SETTINGS = Object.freeze({
   startOnBoot: false,
   notificationsEnabled: true,
   quickToggleEnabled: false,
+  skippedUpdateVersion: null,
   quickToggleHotkey: {
     key: "F9",
     modifiers: {
@@ -180,6 +181,9 @@ function mergeSettings(baseSettings, nextValues = {}) {
     quickToggleEnabled: nextValues.quickToggleEnabled === undefined
       ? Boolean(baseSettings.quickToggleEnabled)
       : Boolean(nextValues.quickToggleEnabled),
+    skippedUpdateVersion: nextValues.skippedUpdateVersion === undefined
+      ? (baseSettings.skippedUpdateVersion ?? null)
+      : (nextValues.skippedUpdateVersion === null ? null : String(nextValues.skippedUpdateVersion)),
     quickToggleHotkey: nextValues.quickToggleHotkey === undefined
       ? normalizeQuickToggleHotkeySpec(baseSettings.quickToggleHotkey)
       : normalizeQuickToggleHotkeySpec(nextValues.quickToggleHotkey),

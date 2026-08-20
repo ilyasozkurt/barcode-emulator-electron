@@ -77,5 +77,7 @@ contextBridge.exposeInMainWorld("barcodeEmulator", {
     };
   },
   getAppVersion: () => ipcRenderer.invoke("app:get-version"),
+  checkForUpdate: () => ipcRenderer.invoke("app:check-for-update"),
+  skipUpdateVersion: (version) => ipcRenderer.invoke("app:skip-update-version", version),
   openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
 });

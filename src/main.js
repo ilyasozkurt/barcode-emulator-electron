@@ -545,6 +545,71 @@ ipcMain.handle("history:clear", async () => {
 
 ipcMain.handle("app:get-version", () => app.getVersion());
 
+function compareVersions(a, b) {
+  const parse = (value) => String(value ?? "").replace(/^v/i, "").split(/[-+]/)[0].split(".").map((part) => parseInt(part, 10) || 0);
+  const partsA = parse(a);
+  const partsB = parse(b);
+  const length = Math.max(partsA.length, partsB.length);
+
+  for (let i = 0; i < length; i += 1) {
+    const diff = (partsA[i] ?? 0) - (partsB[i] ?? 0);
+    if (diff !== 0) {
+      return diff > 0 ? 1 : -1;
+    }
+  }
+
+  return 0;
+}
+
+const UPDATE_WEBSITE_URL = "https://barcodescanneremulator.dev/#downloads";
+
+function buildUpdateDownloadUrl(latestVersion) {
+  const url = new URL(UPDATE_WEBSITE_URL);
+  url.searchParams.set("utm_source", "app");
+  url.searchParams.set("utm_medium", "update-banner");
+  url.searchParams.set("utm_campaign", "in-app-update");
+  if (latestVersion) {
+    url.searchParams.set("utm_content", `v${latestVersion}`);
+  }
+  return url.toString();
+}
+
+ipcMain.handle("app:check-for-update", async () => {
+  try {
+    const response = await fetch(
+      "https://api.github.com/repos/ilyasozkurt/barcode-emulator-electron/releases/latest",
+      { headers: { Accept: "application/vnd.github+json" } },
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const release = await response.json();
+    const latestVersion = String(release?.tag_name ?? "").replace(/^v/i, "");
+    const currentVersion = app.getVersion();
+
+    if (!latestVersion || compareVersions(latestVersion, currentVersion) <= 0) {
+      return null;
+    }
+
+    return {
+      latestVersion,
+      url: buildUpdateDownloadUrl(latestVersion),
+      skipped: settings.skippedUpdateVersion === latestVersion,
+    };
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+});
+
+ipcMain.handle("app:skip-update-version", async (_event, version) => {
+  settings = mergeSettings(settings, { skippedUpdateVersion: version ?? null });
+  await saveSettings();
+  return getRendererState();
+});
+
 ipcMain.handle("app:open-external", (_event, url) => {
   if (typeof url === "string" && /^https:\/\//.test(url)) {
     return shell.openExternal(url);
