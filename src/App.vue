@@ -41,7 +41,8 @@
                 placeholder="Type a barcode value..."
                 :disabled="!controlsEnabled"
                 class="w-full rounded-[1.4rem] border border-[#d6d6d6] bg-white px-4 py-4 text-[0.95rem] shadow-none"
-                @update:modelValue="onBarcodeInput"
+                @update:modelValue="onBarcodeInput"test
+
               />
               <div class="flex items-center gap-1.5 text-[0.82rem]" :class="statusColorClass">
                 <i :class="['pi', statusIcon]" aria-hidden="true" />
@@ -84,19 +85,31 @@
                 </div>
               </div>
 
-              <Button
-                id="sendButton"
-                class="ml-auto w-1/2"
-                :loading="sendBusy"
-                :disabled="!bridgeAvailable || !controlsEnabled || sendBusy || hotkeyRecording || isTyping || !barcodeValue"
-                @click="sendBarcode"
-              >
-                <i class="pi pi-play" aria-hidden="true" />
-                Emulate
-              </Button>
+              <div class="ml-auto grid w-1/2 gap-1">
+                <Button
+                  id="sendButton"
+                  :loading="sendBusy"
+                  :disabled="!bridgeAvailable || !controlsEnabled || sendBusy || hotkeyRecording || isTyping || !barcodeValue"
+                  @click="sendBarcode"
+                >
+                  <i class="pi pi-play" aria-hidden="true" />
+                  Emulate
+                </Button>
+                <div class="flex items-center justify-center gap-2">
+                  <span class="text-[0.72rem] text-slate-400">Hotkey: {{ hotkeyLabel }}</span>
+                  <button
+                    id="editHotkeyButtonEmulator"
+                    type="button"
+                    class="inline-flex cursor-pointer h-6 min-w-6 items-center justify-center rounded-full border border-slate-300 px-1.5 text-[0.7rem] font-medium text-slate-600 transition hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                    :disabled="!bridgeAvailable || !controlsEnabled || hotkeySaveBusy"
+                    @click="toggleHotkeyRecording"
+                  >
+                    <span v-if="hotkeyRecording">Cancel</span>
+                    <i v-else class="pi pi-pencil text-[0.68rem]" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
             </div>
-
-            <p class="m-0 text-[0.72rem] text-slate-400">Hotkey: {{ hotkeyLabel }}</p>
           </section>
 
           <section v-else-if="activeSection === 'settings'" aria-label="Settings" class="grid gap-5">
@@ -117,7 +130,7 @@
               </div>
             </div>
 
-            <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
               <span class="text-[0.8rem] font-semibold text-slate-500">Start on boot</span>
               <ToggleSwitch
                 id="startOnBootToggle"
@@ -158,8 +171,7 @@
                 </div>
                 <button
                   type="button"
-                  severity="primary"
-                  class="shrink-0 cursor-pointer rounded-full border border-slate-300 px-2.5 py-1 text-[0.74rem] font-medium text-slate-600 transition hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                  class="shrink-0 cursor-pointer rounded-full border border-blue-500 px-2.5 py-1 text-[0.74rem] font-medium text-blue-600 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
                   :disabled="!bridgeAvailable || !controlsEnabled"
                   @click="reuseHistoryEntry(entry.value)"
                 >
@@ -244,12 +256,43 @@
         <p class="m-0 text-[0.82rem] text-slate-500">{{ hotkeyRecordingMessage }}</p>
       </section>
     </Drawer>
+
+    <Dialog
+      v-model:visible="clearHistoryConfirmVisible"
+      modal
+      header="Clear history?"
+      :closable="!clearHistoryBusy"
+      class="!w-[min(90vw,360px)]"
+    >
+      <p class="m-0 text-[0.85rem] text-slate-600">
+        This will remove all recently emulated values. This action cannot be undone.
+      </p>
+      <template #footer>
+        <button
+          type="button"
+          class="cursor-pointer rounded-full border border-slate-300 px-3 py-1.5 text-[0.8rem] font-medium text-slate-600 transition hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="clearHistoryBusy"
+          @click="clearHistoryConfirmVisible = false"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="cursor-pointer rounded-full bg-red-500 px-3 py-1.5 text-[0.8rem] font-medium text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="clearHistoryBusy"
+          @click="confirmClearHistory"
+        >
+          Clear
+        </button>
+      </template>
+    </Dialog>
   </main>
 </template>
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import Button from "primevue/button";
+import Dialog from "primevue/dialog";
 import Drawer from "primevue/drawer";
 import Select from "primevue/select";
 import Textarea from "primevue/textarea";
@@ -381,6 +424,8 @@ const activeSection = ref("emulator");
 const navItems = NAV_ITEMS;
 const historyEntries = ref([]);
 const appVersion = ref("");
+const clearHistoryConfirmVisible = ref(false);
+const clearHistoryBusy = ref(false);
 
 let valueSaveTimer = null;
 let delaySaveTimer = null;
@@ -472,18 +517,32 @@ function reuseHistoryEntry(value) {
   barcodeValue.value = value;
   api.syncBarcodeValue(value);
   queueBarcodeValueSave(value);
+  clearStatus();
   activeSection.value = "emulator";
 }
 
 async function clearHistory() {
+  if (!bridgeAvailable || typeof api.clearHistory !== "function" || historyEntries.value.length === 0) {
+    return;
+  }
+
+  clearHistoryConfirmVisible.value = true;
+}
+
+async function confirmClearHistory() {
   if (!bridgeAvailable || typeof api.clearHistory !== "function") {
     return;
   }
 
+  clearHistoryBusy.value = true;
+
   try {
     historyEntries.value = await api.clearHistory();
+    clearHistoryConfirmVisible.value = false;
   } catch (error) {
     setStatus(error.message, "error");
+  } finally {
+    clearHistoryBusy.value = false;
   }
 }
 
