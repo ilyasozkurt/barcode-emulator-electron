@@ -154,7 +154,7 @@ function pushStatus(payload) {
 }
 
 function showStatusNotification(payload) {
-  if (!payload.notify || !Notification.isSupported()) {
+  if (!payload.notify || !settings.notificationsEnabled || !Notification.isSupported()) {
     return;
   }
 

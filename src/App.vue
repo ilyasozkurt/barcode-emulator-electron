@@ -31,7 +31,8 @@
             :class="lockedContentHeight ? 'shrink-0 grow-0' : 'flex-1'"
             :style="lockedContentHeight ? { height: `${lockedContentHeight}px` } : undefined"
           >
-          <section v-if="activeSection === 'emulator'" aria-label="Barcode reader emulator controls" class="grid gap-3">
+          <section v-if="activeSection === 'emulator'" aria-label="Barcode reader emulator controls" class="grid gap-3 mb-4">
+
             <div class="grid gap-1.5">
               <span class="text-[0.8rem] font-semibold text-slate-500">Input</span>
               <Textarea
@@ -41,8 +42,7 @@
                 placeholder="Type a barcode value..."
                 :disabled="!controlsEnabled"
                 class="w-full rounded-[1.4rem] border border-[#d6d6d6] bg-white px-4 py-4 text-[0.95rem] shadow-none"
-                @update:modelValue="onBarcodeInput"test
-
+                @update:modelValue="onBarcodeInput"
               />
               <div class="flex items-center gap-1.5 text-[0.82rem]" :class="statusColorClass">
                 <i :class="['pi', statusIcon]" aria-hidden="true" />
@@ -85,7 +85,8 @@
                 </div>
               </div>
 
-              <div class="ml-auto grid w-1/2 gap-1">
+              <div class="ml-auto grid w-1/2 gap-1 relative">
+                <span class="text-[0.75rem] font-semibold text-transparent select-none" aria-hidden="true">Emulate</span>
                 <Button
                   id="sendButton"
                   :loading="sendBusy"
@@ -95,7 +96,7 @@
                   <i class="pi pi-play" aria-hidden="true" />
                   Emulate
                 </Button>
-                <div class="flex items-center justify-center gap-2">
+                <div class="flex items-center justify-center gap-2 absolute -bottom-7 left-0 w-full">
                   <span class="text-[0.72rem] text-slate-400">Hotkey: {{ hotkeyLabel }}</span>
                   <button
                     id="editHotkeyButtonEmulator"
@@ -113,23 +114,6 @@
           </section>
 
           <section v-else-if="activeSection === 'settings'" aria-label="Settings" class="grid gap-5">
-            <div class="grid gap-1.5">
-              <span class="text-[0.8rem] font-semibold text-slate-500">Global hotkey</span>
-              <div class="flex items-center gap-2">
-                <span class="text-[0.95rem] font-medium text-slate-700">{{ hotkeyLabel }}</span>
-                <button
-                  id="editHotkeyButton"
-                  type="button"
-                  class="inline-flex cursor-pointer h-7 min-w-7 items-center justify-center rounded-full border border-slate-300 px-2 text-[0.78rem] font-medium text-slate-600 transition hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
-                  :disabled="!bridgeAvailable || !controlsEnabled || hotkeySaveBusy"
-                  @click="toggleHotkeyRecording"
-                >
-                  <span v-if="hotkeyRecording">Cancel</span>
-                  <i v-else class="pi pi-pencil" aria-hidden="true" />
-                </button>
-              </div>
-            </div>
-
             <div class="flex items-center gap-3">
               <span class="text-[0.8rem] font-semibold text-slate-500">Start on boot</span>
               <ToggleSwitch
@@ -137,6 +121,16 @@
                 v-model="startOnBoot"
                 :disabled="!bridgeAvailable || !controlsEnabled"
                 @update:model-value="handleStartOnBootUpdate"
+              />
+            </div>
+
+            <div class="flex items-center gap-3">
+              <span class="text-[0.8rem] font-semibold text-slate-500">Notifications</span>
+              <ToggleSwitch
+                id="notificationsEnabledToggle"
+                v-model="notificationsEnabled"
+                :disabled="!bridgeAvailable || !controlsEnabled"
+                @update:model-value="handleNotificationsEnabledUpdate"
               />
             </div>
           </section>
@@ -374,6 +368,7 @@ const suffixKeyOptions = [
   { label: "TAB", value: "tab" },
 ];
 const startOnBoot = ref(false);
+const notificationsEnabled = ref(true);
 const isTyping = ref(false);
 const statusMessage = ref("");
 const statusType = ref("idle");
@@ -449,6 +444,7 @@ function applySettingsState(settingsState) {
   delayMs.value = settingsState.settings.delayMs;
   suffixKey.value = settingsState.settings.suffixKey;
   startOnBoot.value = settingsState.settings.startOnBoot;
+  notificationsEnabled.value = settingsState.settings.notificationsEnabled;
   draftHotkey.value = cloneHotkey(settingsState.settings.hotkey);
   controlsEnabled.value = true;
 }
@@ -613,6 +609,20 @@ async function handleStartOnBootUpdate(value) {
 
   try {
     await persistSettings({ startOnBoot: value });
+  } catch (error) {
+    setStatus(error.message, "error");
+  }
+}
+
+async function handleNotificationsEnabledUpdate(value) {
+  notificationsEnabled.value = value;
+
+  if (!currentSettings.value || value === currentSettings.value.notificationsEnabled) {
+    return;
+  }
+
+  try {
+    await persistSettings({ notificationsEnabled: value });
   } catch (error) {
     setStatus(error.message, "error");
   }

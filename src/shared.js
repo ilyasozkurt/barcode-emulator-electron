@@ -47,6 +47,7 @@ const DEFAULT_SETTINGS = Object.freeze({
   sendEnter: false,
   suffixKey: "enter",
   startOnBoot: false,
+  notificationsEnabled: true,
   hotkey: {
     key: "A",
     modifiers: {
@@ -132,6 +133,9 @@ function mergeSettings(baseSettings, nextValues = {}) {
     startOnBoot: nextValues.startOnBoot === undefined
       ? Boolean(baseSettings.startOnBoot)
       : Boolean(nextValues.startOnBoot),
+    notificationsEnabled: nextValues.notificationsEnabled === undefined
+      ? (baseSettings.notificationsEnabled === undefined ? true : Boolean(baseSettings.notificationsEnabled))
+      : Boolean(nextValues.notificationsEnabled),
     hotkey: nextValues.hotkey === undefined
       ? normalizeHotkeySpec(baseSettings.hotkey)
       : normalizeHotkeySpec(nextValues.hotkey),
