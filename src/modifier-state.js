@@ -1,7 +1,7 @@
-const { Key } = require("@nut-tree-fork/nut-js");
-const { UiohookKey } = require("uiohook-napi");
-
 const { getEnabledHotkeyModifiers } = require("./shared");
+const UiohookKey = require("./uiohook-keycodes");
+
+let cachedNutKeys;
 
 const UIOHOOK_MODIFIER_KEYCODES = Object.freeze({
   control: [UiohookKey.Ctrl, UiohookKey.CtrlRight],
@@ -10,28 +10,36 @@ const UIOHOOK_MODIFIER_KEYCODES = Object.freeze({
   super: [UiohookKey.Meta, UiohookKey.MetaRight],
 });
 
-function getNutMetaKeys(platform = process.platform) {
+function getNutKeys() {
+  if (cachedNutKeys === undefined) {
+    cachedNutKeys = require("@nut-tree-fork/nut-js").Key;
+  }
+
+  return cachedNutKeys;
+}
+
+function getNutMetaKeys(nutKeys, platform = process.platform) {
   if (platform === "darwin") {
-    return [Key.LeftCmd, Key.RightCmd];
+    return [nutKeys.LeftCmd, nutKeys.RightCmd];
   }
 
   if (platform === "win32") {
-    return [Key.LeftWin, Key.RightWin];
+    return [nutKeys.LeftWin, nutKeys.RightWin];
   }
 
-  return [Key.LeftSuper, Key.RightSuper];
+  return [nutKeys.LeftSuper, nutKeys.RightSuper];
 }
 
-function createNutKeyByUiohookKeycode(platform = process.platform) {
-  const [leftMetaKey, rightMetaKey] = getNutMetaKeys(platform);
+function createNutKeyByUiohookKeycode(nutKeys, platform = process.platform) {
+  const [leftMetaKey, rightMetaKey] = getNutMetaKeys(nutKeys, platform);
 
   return new Map([
-    [UiohookKey.Ctrl, Key.LeftControl],
-    [UiohookKey.CtrlRight, Key.RightControl],
-    [UiohookKey.Alt, Key.LeftAlt],
-    [UiohookKey.AltRight, Key.RightAlt],
-    [UiohookKey.Shift, Key.LeftShift],
-    [UiohookKey.ShiftRight, Key.RightShift],
+    [UiohookKey.Ctrl, nutKeys.LeftControl],
+    [UiohookKey.CtrlRight, nutKeys.RightControl],
+    [UiohookKey.Alt, nutKeys.LeftAlt],
+    [UiohookKey.AltRight, nutKeys.RightAlt],
+    [UiohookKey.Shift, nutKeys.LeftShift],
+    [UiohookKey.ShiftRight, nutKeys.RightShift],
     [UiohookKey.Meta, leftMetaKey],
     [UiohookKey.MetaRight, rightMetaKey],
   ]);
@@ -67,8 +75,11 @@ function getRestoreKeycodes(plan, pressedKeycodes = new Set()) {
   return plan.restoreKeycodes.filter((keycode) => pressedKeycodes.has(keycode));
 }
 
-function mapModifierKeycodesToNutKeys(keycodes, platform = process.platform) {
-  const nutKeyByUiohookKeycode = createNutKeyByUiohookKeycode(platform);
+function mapModifierKeycodesToNutKeys(keycodes, {
+  platform = process.platform,
+  nutKeys,
+} = {}) {
+  const nutKeyByUiohookKeycode = createNutKeyByUiohookKeycode(nutKeys ?? getNutKeys(), platform);
 
   return uniq(keycodes.map((keycode) => nutKeyByUiohookKeycode.get(keycode)).filter(Boolean));
 }
