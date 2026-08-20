@@ -61,7 +61,7 @@
                   option-value="value"
                   size="small"
                   overlay-class="suffix-key-select-overlay"
-                  class="!w-28 [&_.p-select-label]:!py-1.5 [&_.p-select-label]:!text-[0.8rem]"
+                  class="w-28! [&_.p-select-label]:py-1.5! [&_.p-select-label]:text-[0.8rem]!"
                   :disabled="!bridgeAvailable || !controlsEnabled"
                   @update:model-value="handleSuffixKeyUpdate"
                 />
@@ -232,7 +232,7 @@
     <Drawer
       v-model:visible="hotkeyRecording"
       position="bottom"
-      class="!h-auto !max-h-[50vh] rounded-t-[24px]"
+      class="h-auto! max-h-[50vh]! rounded-t-3xl"
       pt:header:class="!px-5 !py-4"
       aria-live="polite"
     >
@@ -256,7 +256,7 @@
       modal
       header="Clear history?"
       :closable="!clearHistoryBusy"
-      class="!w-[min(90vw,360px)]"
+      class="w-[min(90vw,360px)]!"
     >
       <p class="m-0 text-[0.85rem] text-slate-600">
         This will remove all recently emulated values. This action cannot be undone.
