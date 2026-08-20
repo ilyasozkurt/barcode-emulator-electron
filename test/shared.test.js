@@ -6,6 +6,7 @@ const {
   createAcceleratorFromSpec,
   formatHotkeyLabel,
   DEFAULT_SETTINGS,
+  mergeSettings,
   normalizeBarcodeValue,
   normalizeHotkeySpec,
 } = require("../src/shared");
@@ -16,6 +17,13 @@ test("normalizeBarcodeValue preserves supported characters", () => {
 
 test("normalizeBarcodeValue replaces unsupported characters with question marks", () => {
   assert.equal(normalizeBarcodeValue("hello мир"), "hello????");
+});
+
+test("mergeSettings preserves long barcode values", () => {
+  const longBarcodeValue = "ABC123".repeat(100);
+  const mergedSettings = mergeSettings(DEFAULT_SETTINGS, { barcodeValue: longBarcodeValue });
+
+  assert.equal(mergedSettings.barcodeValue, longBarcodeValue);
 });
 
 test("clampDelay keeps values inside the supported range", () => {
