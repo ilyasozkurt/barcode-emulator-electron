@@ -183,7 +183,7 @@ async function emulateBarcodeInput() {
     await keyboard.type(normalizedValue);
 
     if (settings.sendEnter) {
-      await keyboard.type(Key.Enter);
+      await keyboard.type(settings.suffixKey === "tab" ? Key.Tab : Key.Enter);
     }
   } finally {
     await restoreHotkeyModifiersAfterEmulation(modifierPlan);

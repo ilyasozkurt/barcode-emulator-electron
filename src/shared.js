@@ -39,10 +39,13 @@ const HOTKEY_KEYS = Object.freeze([
 
 const SUPPORTED_BARCODE_CHAR = /^[0-9A-Za-z`~!@#$%^&*()_+\-=\[\]{}\\|;:'",.<>/?]$/;
 
+const SUFFIX_KEYS = Object.freeze(["enter", "tab"]);
+
 const DEFAULT_SETTINGS = Object.freeze({
   barcodeValue: "test",
   delayMs: 10,
   sendEnter: false,
+  suffixKey: "enter",
   hotkey: {
     key: "A",
     modifiers: {
@@ -71,6 +74,11 @@ function clampDelay(delayMs) {
   }
 
   return Math.min(100, Math.max(10, Math.round(parsed)));
+}
+
+function normalizeSuffixKey(suffixKey) {
+  const normalized = String(suffixKey ?? DEFAULT_SETTINGS.suffixKey).toLowerCase();
+  return SUFFIX_KEYS.includes(normalized) ? normalized : DEFAULT_SETTINGS.suffixKey;
 }
 
 function normalizeHotkeySpec(spec) {
@@ -117,6 +125,9 @@ function mergeSettings(baseSettings, nextValues = {}) {
     sendEnter: nextValues.sendEnter === undefined
       ? baseSettings.sendEnter
       : Boolean(nextValues.sendEnter),
+    suffixKey: nextValues.suffixKey === undefined
+      ? normalizeSuffixKey(baseSettings.suffixKey)
+      : normalizeSuffixKey(nextValues.suffixKey),
     hotkey: nextValues.hotkey === undefined
       ? normalizeHotkeySpec(baseSettings.hotkey)
       : normalizeHotkeySpec(nextValues.hotkey),
@@ -168,6 +179,7 @@ function formatHotkeyLabel(spec, platform = process.platform) {
 module.exports = {
   DEFAULT_SETTINGS,
   HOTKEY_KEYS,
+  SUFFIX_KEYS,
   clampDelay,
   createAcceleratorFromSpec,
   formatHotkeyLabel,
@@ -176,4 +188,5 @@ module.exports = {
   mergeSettings,
   normalizeBarcodeValue,
   normalizeHotkeySpec,
+  normalizeSuffixKey,
 };

@@ -23,10 +23,9 @@
           id="barcodeValue"
           v-model="barcodeValue"
           :rows="10"
-          auto-resize
           placeholder="Type a barcode value..."
           :disabled="!controlsEnabled"
-          class="min-h-[240px] w-full rounded-[1.9rem] border border-[#d6d6d6] bg-white px-4 py-5 text-[0.95rem] shadow-none"
+          class="min-h-60 w-full rounded-[1.9rem] border border-[#d6d6d6] bg-white px-4 py-5 text-[0.95rem] shadow-none"
           @update:modelValue="onBarcodeInput"
         />
       </section>
@@ -44,7 +43,23 @@
             :disabled="!bridgeAvailable || !controlsEnabled"
             @change="handleSendEnterUpdate($event.target.checked)"
           />
-          <span>Send ENTER at the end</span>
+          <span class="flex items-center gap-1">
+            Send
+            <Select
+              id="suffixKeySelect"
+              v-model="suffixKey"
+              :options="suffixKeyOptions"
+              option-label="label"
+              option-value="value"
+              size="small"
+              overlay-class="suffix-key-select-overlay"
+              class="!min-w-0 [&_.p-select-label]:!py-0 [&_.p-select-label]:!pr-4 [&_.p-select-label]:!pl-1.5 [&_.p-select-label]:!text-[0.72rem] [&_.p-select-label]:!font-semibold [&_.p-select-dropdown]:!w-3.5 [&_.p-select-dropdown_svg]:!h-2.5 [&_.p-select-dropdown_svg]:!w-2.5"
+              :disabled="!bridgeAvailable || !controlsEnabled"
+              @click.stop
+              @update:model-value="handleSuffixKeyUpdate"
+            />
+            at the end
+          </span>
         </label>
 
         <button
@@ -138,6 +153,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import Button from "primevue/button";
 import Drawer from "primevue/drawer";
+import Select from "primevue/select";
 import Textarea from "primevue/textarea";
 
 const api = window.barcodeEmulator;
@@ -194,6 +210,11 @@ const barcodeValue = ref("");
 const hotkeyLabel = ref("Loading hotkey...");
 const delayMs = ref(30);
 const sendEnter = ref(false);
+const suffixKey = ref("enter");
+const suffixKeyOptions = [
+  { label: "ENTER", value: "enter" },
+  { label: "TAB", value: "tab" },
+];
 const statusMessage = ref("");
 const statusType = ref("idle");
 const draftHotkey = ref(
@@ -231,6 +252,7 @@ function applySettingsState(settingsState) {
   hotkeyLabel.value = settingsState.hotkeyLabel;
   delayMs.value = settingsState.settings.delayMs;
   sendEnter.value = settingsState.settings.sendEnter;
+  suffixKey.value = settingsState.settings.suffixKey;
   draftHotkey.value = cloneHotkey(settingsState.settings.hotkey);
   controlsEnabled.value = true;
 }
@@ -347,6 +369,23 @@ async function onSendEnterChange() {
 function handleSendEnterUpdate(value) {
   sendEnter.value = value;
   onSendEnterChange();
+}
+
+async function onSuffixKeyChange() {
+  if (!currentSettings.value || suffixKey.value === currentSettings.value.suffixKey) {
+    return;
+  }
+
+  try {
+    await persistSettings({ suffixKey: suffixKey.value });
+  } catch (error) {
+    setStatus(error.message, "error");
+  }
+}
+
+function handleSuffixKeyUpdate(value) {
+  suffixKey.value = value;
+  onSuffixKeyChange();
 }
 
 function toggleHotkeyRecording() {
@@ -468,7 +507,7 @@ onBeforeUnmount(() => {
 });
 
 watch(
-  [barcodeValue, hotkeyLabel, delayMs, sendEnter, hotkeyRecording, hotkeyRecordingMessage],
+  [barcodeValue, hotkeyLabel, delayMs, sendEnter, suffixKey, hotkeyRecording, hotkeyRecordingMessage],
   async () => {
     await nextTick();
     scheduleContentHeightReport();

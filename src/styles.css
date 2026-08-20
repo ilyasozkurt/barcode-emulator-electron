@@ -29,3 +29,13 @@
     box-sizing: border-box;
   }
 }
+
+.suffix-key-select-overlay .p-select-option {
+  padding-block: 0.2rem;
+  padding-inline: 0.5rem;
+  font-size: 0.72rem;
+}
+
+.suffix-key-select-overlay .p-select-list {
+  padding-block: 0.2rem;
+}
