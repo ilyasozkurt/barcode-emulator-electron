@@ -1,15 +1,28 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { Key } = require("@nut-tree-fork/nut-js");
-const { UiohookKey } = require("uiohook-napi");
-
 const {
   createHotkeyModifierPlan,
   getRestoreKeycodes,
   isTrackedModifierKeycode,
   mapModifierKeycodesToNutKeys,
 } = require("../src/modifier-state");
+const UiohookKey = require("../src/uiohook-keycodes");
+
+const nutKeys = Object.freeze({
+  LeftAlt: "LeftAlt",
+  LeftControl: "LeftControl",
+  LeftShift: "LeftShift",
+  LeftSuper: "LeftSuper",
+  RightAlt: "RightAlt",
+  RightControl: "RightControl",
+  RightShift: "RightShift",
+  RightSuper: "RightSuper",
+  LeftCmd: "LeftCmd",
+  RightCmd: "RightCmd",
+  LeftWin: "LeftWin",
+  RightWin: "RightWin",
+});
 
 test("createHotkeyModifierPlan prefers the exact pressed modifier side", () => {
   const plan = createHotkeyModifierPlan({
@@ -50,8 +63,8 @@ test("getRestoreKeycodes only keeps modifiers still physically held", () => {
 
 test("mapModifierKeycodesToNutKeys maps tracked modifiers to nut keys", () => {
   assert.deepEqual(
-    mapModifierKeycodesToNutKeys([UiohookKey.CtrlRight, UiohookKey.Shift]),
-    [Key.RightControl, Key.LeftShift],
+    mapModifierKeycodesToNutKeys([UiohookKey.CtrlRight, UiohookKey.Shift], process.platform, nutKeys),
+    [nutKeys.RightControl, nutKeys.LeftShift],
   );
 });
 
