@@ -11,11 +11,16 @@ Designed for QA workflows, POS testing, warehouse systems, demos, and developmen
 ## Features
 
 - Simulate HID-style barcode scanner keyboard input
-- Configurable global hotkeys
+- Configurable global hotkeys, editable from both the Emulator and Settings tabs
 - Adjustable typing speed / key delay
-- Optional trailing suffix key — `Enter` or `Tab`
-- Unlimited barcode input length with a fixed-size, scrollable input box
+- Optional trailing suffix key — `None`, `Enter`, or `Tab`
+- Unlimited barcode input length with a fixed-size, scrollable input box (no auto-resize)
+- "Input is being changed..." status guard to avoid emulating stale/in-progress edits
+- Recently emulated history with one-click reuse and a confirm-before-clear dialog
+- Optional desktop notifications for emulation results, toggleable in Settings
+- Start on boot toggle for launching automatically with the system
 - Single-instance enforcement (relaunching focuses the existing window)
+- Sidebar navigation (Emulator / Settings / History / About) with a fixed-height window and internal scrolling
 - Works with desktop apps, browser apps, POS systems, and internal tooling
 - Cross-platform support for Windows, macOS, and Linux
 - Persistent settings between launches
@@ -34,6 +39,17 @@ Designed for QA workflows, POS testing, warehouse systems, demos, and developmen
 - Internal demos and onboarding environments
 - Local development workflows
 - Simulating keyboard wedge barcode readers
+
+---
+
+## Interface
+
+The app is organized into four sidebar tabs:
+
+- **Emulator** — Enter the barcode value, pick a suffix key (`None` / `Enter` / `Tab`) and delay, then press **Emulate** (or the global hotkey) to type it into the focused window. The global hotkey is editable directly from this tab.
+- **Settings** — Toggle **Start on boot** and **Notifications** (desktop notifications for emulation results).
+- **History** — Browse recently emulated values, reuse one with **Use**, or clear the list (with a confirmation prompt).
+- **About** — App version, links to the website, GitHub repository, and issue tracker.
 
 ---
 
