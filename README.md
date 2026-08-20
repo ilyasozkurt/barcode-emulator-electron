@@ -4,7 +4,7 @@ Cross-platform desktop utility built with Electron and Vue that simulates a barc
 
 Designed for QA workflows, POS testing, warehouse systems, demos, and development environments where physical barcode scanner hardware is unavailable.
 
-<img width="1206" height="419" alt="Barcode Scanner Emulator Preview" src="https://github.com/user-attachments/assets/cec9569e-ce33-4498-b439-7be3f9be518d" />
+<img width="1206" height="419" alt="Barcode Scanner Emulator Preview" src="https://github.com/user-attachments/assets/389935d1-9da2-47c9-9460-f7c1d4d42333" />
 
 ---
 
