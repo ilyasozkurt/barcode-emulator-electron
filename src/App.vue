@@ -23,7 +23,6 @@
           id="barcodeValue"
           v-model="barcodeValue"
           :rows="10"
-          auto-resize
           placeholder="Type a barcode value..."
           :disabled="!controlsEnabled"
           class="min-h-[240px] w-full rounded-[1.9rem] border border-[#d6d6d6] bg-white px-4 py-5 text-[0.95rem] shadow-none"
