@@ -13,7 +13,9 @@ Designed for QA workflows, POS testing, warehouse systems, demos, and developmen
 - Simulate HID-style barcode scanner keyboard input
 - Configurable global hotkeys
 - Adjustable typing speed / key delay
-- Optional trailing `Enter`
+- Optional trailing suffix key — `Enter` or `Tab`
+- Unlimited barcode input length with a fixed-size, scrollable input box
+- Single-instance enforcement (relaunching focuses the existing window)
 - Works with desktop apps, browser apps, POS systems, and internal tooling
 - Cross-platform support for Windows, macOS, and Linux
 - Persistent settings between launches
