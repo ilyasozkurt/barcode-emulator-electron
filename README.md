@@ -1,14 +1,17 @@
+
 # Barcode Scanner Emulator
 
 Cross-platform desktop utility built with Electron and Vue that simulates a barcode scanner by injecting keyboard input into the currently focused application using configurable global shortcuts.
 
-Designed for QA workflows, POS testing, warehouse systems, demos, and development environments where physical barcode scanner hardware is unavailable.
+<img alt="Barcode Scanner Emulator Preview" src="https://github.com/user-attachments/assets/3a21d14d-2e92-40bb-bbf6-50c14af1bf93" />
 
-<img alt="Barcode Scanner Emulator Preview" src="https://github.com/user-attachments/assets/c20d9d27-216d-4a6d-8ca6-6b0892c5c528" />
+Designed for QA workflows, POS testing, warehouse systems, demos, and development environments where physical barcode scanner hardware is unavailable.
 
 ---
 
 ## Features
+
+<img alt="Barcode Scanner Emulator Preview" src="https://github.com/user-attachments/assets/c20d9d27-216d-4a6d-8ca6-6b0892c5c528" />
 
 - Simulate HID-style barcode scanner keyboard input
 - Configurable global hotkeys, editable from both the Emulator and Settings tabs
@@ -29,6 +32,7 @@ Designed for QA workflows, POS testing, warehouse systems, demos, and developmen
 - Lightweight desktop utility
 - Offline-first workflow
 - Open-source project
+
 
 ---
 
