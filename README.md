@@ -11,8 +11,6 @@ Designed for QA workflows, POS testing, warehouse systems, demos, and developmen
 
 ## Features
 
-<img alt="Barcode Scanner Emulator Preview" src="https://github.com/user-attachments/assets/c20d9d27-216d-4a6d-8ca6-6b0892c5c528" />
-
 - Simulate HID-style barcode scanner keyboard input
 - Configurable global hotkeys, editable from both the Emulator and Settings tabs
 - Adjustable typing speed / key delay
@@ -51,6 +49,8 @@ Designed for QA workflows, POS testing, warehouse systems, demos, and developmen
 ## Interface
 
 The app is organized into four sidebar tabs:
+
+<img alt="Barcode Scanner Emulator Preview" src="https://github.com/user-attachments/assets/c20d9d27-216d-4a6d-8ca6-6b0892c5c528" />
 
 - **Emulator** — Enter the barcode value, pick a suffix key (`None` / `Enter` / `Tab`) and delay, then press **Emulate** (or the global hotkey) to type it into the focused window. The global hotkey is editable directly from this tab.
 - **History** — Browse recently emulated values, reuse one with **Use**, or clear the list (with a confirmation prompt).
